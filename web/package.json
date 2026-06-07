@@ -1,0 +1,13 @@
+{
+  "name": "mehr110-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build step for the صندوق مهر۱۱۰ web app: precompile JSX -> minified JS (no in-browser Babel).",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

@@ -1,7 +1,7 @@
 {
   "hosting": {
     "public": "web",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "**/screenshots/**"],
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "**/screenshots/**", "**/*.jsx", "web/build.mjs", "web/package.json", "web/package-lock.json"],
     "rewrites": [],
     "cleanUrls": true,
     "trailingSlash": false,
