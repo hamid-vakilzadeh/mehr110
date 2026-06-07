@@ -47,7 +47,7 @@ function KpiBand({ fund, onAttention, onMembers }) {
         <div style={{ marginTop: isMobile ? 10 : 18 }}>
           <Money value={k.totalPool} unit="تومان" style={{ fontSize: isMobile ? 40 : 56, fontWeight: 600, color: 'var(--accent)', lineHeight: 1.1 }} />
           <div style={{ fontFamily: 'var(--serif)', fontSize: isMobile ? 14 : 17, color: 'var(--ink-2)', marginTop: isMobile ? 10 : 16, maxWidth: '28ch', lineHeight: 1.7 }}>
-            همهٔ آنچه خانواده از سال ۱۳۹۶ تاکنون با هم پس‌انداز کرده است.
+            همهٔ آنچه خانواده از سال ۱۳۸۰ تاکنون با هم پس‌انداز کرده است.
           </div>
         </div>
       </Tile>

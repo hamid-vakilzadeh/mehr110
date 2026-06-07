@@ -1,9 +1,6 @@
 /* charts.jsx — «صندوق در یک نگاه». عنوان‌ها نتیجه‌گیری‌اند، نه برچسب.
    بدون کادر و سایه و خطوط راهنمای سنگین؛ برچسب‌گذاری مستقیم. RTL. */
 
-// Jalali year in Persian digits
-const faYear = (g) => new Intl.DateTimeFormat('fa-IR', { calendar: 'persian', year: 'numeric' }).format(new Date(g, 6, 1));
-
 function Panel({ title, children, style = {} }) {
   return (
     <section style={{
@@ -20,46 +17,7 @@ function Panel({ title, children, style = {} }) {
   );
 }
 
-/* ---------- ۱. رشد سرمایه — خط واحد، نشانگر فقط روی «امروز» (راست‌چین) ---------- */
-function PoolGrowth({ fund }) {
-  const g = fund.growth;
-  const W = 560, H = 168, padL = 72, padR = 10, padT = 16, padB = 26;
-  const ys = g.map((d) => d.pool);
-  const maxY = Math.max(1, ...ys); // avoid /0 -> NaN when the fund is empty
-  // i=0 (قدیمی‌ترین) سمت راست، آخرین (امروز) سمت چپ
-  const x = (i) => W - padR - (i / (g.length - 1)) * (W - padL - padR);
-  const y = (v) => padT + (1 - v / maxY) * (H - padT - padB);
-  const line = g.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(d.pool).toFixed(1)}`).join(' ');
-  const area = `${line} L ${x(g.length - 1).toFixed(1)} ${H - padB} L ${x(0).toFixed(1)} ${H - padB} Z`;
-  const last = g[g.length - 1];
-  const li = g.length - 1;
-
-  return (
-    <Panel title="سرمایهٔ صندوق هر سال رشد کرده — امروز بزرگ‌تر از همیشه است.">
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block', overflow: 'visible' }}>
-        <defs>
-          <linearGradient id="poolFade" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.14" />
-            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke="var(--hair)" strokeWidth="1" />
-        <path d={area} fill="url(#poolFade)" />
-        <path d={line} fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={x(li)} cy={y(last.pool)} r="4.5" fill="var(--surface)" stroke="var(--accent)" strokeWidth="2.4" />
-        {/* برچسب مستقیم مقدار امروز — سمت چپِ نشانگر */}
-        <text x={x(li) - 12} y={y(last.pool) - 6} textAnchor="end" fontFamily="Vazirmatn, sans-serif" fontSize="15" fontWeight="600" fill="var(--accent)">{fmt(last.pool)}</text>
-        <text x={x(li) - 12} y={y(last.pool) + 9} textAnchor="end" fontFamily="Vazirmatn, sans-serif" fontSize="10.5" fill="var(--ink-3)">امروز</text>
-        {[0, Math.floor(g.length / 2), li].map((i) => (
-          <text key={i} x={x(i)} y={H - 8} fontFamily="Vazirmatn, sans-serif" fontSize="11" fill="var(--ink-3)"
-            textAnchor={i === 0 ? 'end' : i === li ? 'start' : 'middle'}>{faYear(g[i].year)}</text>
-        ))}
-      </svg>
-    </Panel>
-  );
-}
-
-/* ---------- ۲. ترکیب سرمایه — نوار افقی ۱۰۰٪ انباشته ---------- */
+/* ---------- ترکیب سرمایه — نوار افقی ۱۰۰٪ انباشته ---------- */
 function Composition({ fund }) {
   const { available, outstanding, totalPool } = fund.kpis;
   const availPct = totalPool > 0 ? (available / totalPool) * 100 : 0;
@@ -161,4 +119,4 @@ function RotationQueue({ fund }) {
   );
 }
 
-Object.assign(window, { Panel, PoolGrowth, Composition, FamilyBars, RotationQueue });
+Object.assign(window, { Panel, Composition, FamilyBars, RotationQueue });

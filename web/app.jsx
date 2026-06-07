@@ -135,10 +135,9 @@ function App() {
       <div style={{
         display: 'grid', gap: 14,
         gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 0.92fr',
-        gridTemplateAreas: isMobile ? `"grow" "comp" "fam" "queue"` : `"grow grow queue" "comp fam queue"`,
+        gridTemplateAreas: isMobile ? `"comp" "fam" "queue"` : `"comp fam queue"`,
         alignItems: 'start',
       }}>
-        <div style={{ gridArea: 'grow' }}><PoolGrowth fund={fund} /></div>
         <div style={{ gridArea: 'comp' }}><Composition fund={fund} /></div>
         <div style={{ gridArea: 'fam' }}><FamilyBars fund={fund} /></div>
         <div style={{ gridArea: 'queue' }}><RotationQueue fund={fund} /></div>

@@ -3,7 +3,6 @@
    داده برای ذخیره در Firebase/Firestore آماده می‌شود (collection: members). */
 
 const FA_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
-const FAMILIES_LIST = ['حسینی','کریمی','احمدی','رضایی','نظری','صادقی','تهرانی','کاظمی','موسوی','اصفهانی','بهرامی','یزدانی'];
 
 function Field({ label, hint, required, children, full }) {
   return (
@@ -99,7 +98,6 @@ function AddMember() {
   const [dobD, setDobD] = React.useState('');
   const [dobM, setDobM] = React.useState('');
   const [dobY, setDobY] = React.useState('');
-  const [family, setFamily] = React.useState(editM ? editM.family : FAMILIES_LIST[0]);
   const [phones, setPhones] = React.useState(editM ? editM.phones.map((p) => faDigits(p)) : ['']);
   const [accounts, setAccounts] = React.useState(editM ? editM.accounts.map((a) => faDigits(a)) : ['']);
   const [referrer, setReferrer] = React.useState(editM && editM.referredBy ? editM.referredBy : '');
@@ -121,7 +119,7 @@ function AddMember() {
       try {
         const dob = (dobY && dobM && dobD) ? window.API.jalaliToMs(dobY, dobM, dobD) : null;
         const payload = {
-          firstName: first.trim(), lastName: last.trim(), family,
+          firstName: first.trim(), lastName: last.trim(), family: last.trim(),
           dob, phones: phones.filter((p) => p.trim()), accounts: accounts.filter((a) => a.trim()),
           referredBy: referrer.trim() || null, status: active ? 'active' : 'inactive',
         };
@@ -153,7 +151,7 @@ function AddMember() {
           <p style={{ margin: '10px 0 4px', fontSize: 15, color: 'var(--ink-2)', lineHeight: 1.7 }}>
             {isEdit
               ? <>اطلاعات <strong>{first} {last}</strong> به‌روزرسانی شد.</>
-              : <><strong>{first} {last}</strong> به خانوادهٔ {family} افزوده شد.</>}
+              : <><strong>{first} {last}</strong> به خانوادهٔ {last} افزوده شد.</>}
           </p>
           <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ink-3)' }}>این رکورد در مجموعهٔ <span className="mono" style={{ direction: 'ltr', unicodeBidi: 'embed' }}>members</span> فایربیس ذخیره می‌شود.</p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 28 }}>
@@ -214,11 +212,6 @@ function AddMember() {
                 {Array.from({ length: 85 }, (_, i) => 1404 - i).map((y) => <option key={y} value={y}>{faDigits(y)}</option>)}
               </Select>
             </div>
-          </Field>
-          <Field label="خانواده">
-            <Select value={family} onChange={setFamily}>
-              {FAMILIES_LIST.map((f) => <option key={f}>{f}</option>)}
-            </Select>
           </Field>
           <Field label="معرف" hint="عضوی که این فرد را معرفی کرده (اختیاری)">
             <TextInput value={referrer} onChange={setReferrer} placeholder="مثلاً رضا کریمی" />
