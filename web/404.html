@@ -6,17 +6,10 @@
 <title>صندوق مهر۱۱۰</title>
 <link rel="stylesheet" href="/tokens.css" />
 <script>
-  /* Resolve friendly URLs: a clean path like /dashboard -> /dashboard.html.
-     Anything else (or a truly missing file) -> the login / landing page.
-     Guards against loops: paths that already have an extension go to index. */
-  (function () {
-    var p = (location.pathname || '').replace(/\/+$/, '');
-    if (p && !/\.[a-z0-9]+$/i.test(p)) {
-      location.replace(p + '.html' + location.search + location.hash);
-    } else {
-      location.replace('/index.html');
-    }
-  })();
+  /* With cleanUrls=true, real pages (e.g. /dashboard) resolve directly, so this
+     only runs for genuinely missing paths — send them to the landing page.
+     (Do NOT append .html here: cleanUrls would 301 it back and cause a loop.) */
+  location.replace('/');
 </script>
 <style>
   body { min-height: 100vh; display: grid; place-items: center; margin: 0; font-family: var(--sans, system-ui); background: var(--paper, #faf9f7); color: var(--ink, #2b2823); }
