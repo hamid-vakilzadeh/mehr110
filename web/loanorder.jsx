@@ -12,6 +12,7 @@ function LoanOrder() {
   const [dragId, setDragId] = React.useState(null);
   const [overId, setOverId] = React.useState(null);
   const [saved, setSaved] = React.useState(false);
+  const [confirmRound, setConfirmRound] = React.useState(false);
 
   const receivedCount = order.filter((m) => m.received).length;
   const total = order.length;
@@ -49,11 +50,12 @@ function LoanOrder() {
     if (window.API && window.API.live) window.API.markReceived(id, nv).catch((e) => console.error(e));
   };
 
-  const startNewRound = () => {
+  const doStartNewRound = () => {
     if (window.API && window.API.live) window.API.startNewRound().catch((e) => console.error(e));
     setOrder((arr) => arr.map((m) => ({ ...m, received: false })));
     setRound((r) => r + 1);
     setSaved(false);
+    setConfirmRound(false);
   };
 
   return (
@@ -96,7 +98,7 @@ function LoanOrder() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--accent-soft)', border: '1px solid var(--accent-line)', borderRadius: 'var(--radius)', padding: '14px 18px', marginBottom: 16 }}>
           <Icon name="check" size={18} stroke={2.2} style={{ color: 'var(--accent)' }} />
           <div style={{ flex: 1, fontSize: 13.5, color: 'var(--ink)', fontWeight: 500 }}>همهٔ اعضا در این دور وام گرفته‌اند. می‌توانید دور تازه را آغاز کنید.</div>
-          <button onClick={startNewRound} style={{ height: 38, padding: '0 16px', borderRadius: 9, background: 'var(--accent)', color: 'var(--surface)', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap' }}>
+          <button onClick={() => setConfirmRound(true)} style={{ height: 38, padding: '0 16px', borderRadius: 9, background: 'var(--accent)', color: 'var(--surface)', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap' }}>
             <Icon name="refresh" size={15} stroke={1.8} /> شروع دور جدید
           </button>
         </div>
@@ -162,7 +164,7 @@ function LoanOrder() {
           {saved && <Icon name="check" size={14} stroke={2.2} />}{saved ? 'ترتیب ذخیره شد' : 'تغییرات ذخیره‌نشده'}
         </span>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={startNewRound} style={{ height: 44, padding: '0 18px', borderRadius: 10, background: 'var(--surface)', color: 'var(--ink-2)', border: '1px solid var(--hair)', cursor: 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+          <button onClick={() => setConfirmRound(true)} style={{ height: 44, padding: '0 18px', borderRadius: 10, background: 'var(--surface)', color: 'var(--ink-2)', border: '1px solid var(--hair)', cursor: 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
             <Icon name="refresh" size={16} stroke={1.8} /> شروع دور جدید
           </button>
           <button onClick={() => {
@@ -174,6 +176,26 @@ function LoanOrder() {
           </button>
         </div>
       </div>
+
+      {confirmRound && (
+        <div onClick={() => setConfirmRound(false)} style={{ position: 'fixed', inset: 0, background: 'oklch(0.2 0.01 65 / 0.45)', display: 'grid', placeItems: 'center', padding: 20, zIndex: 50 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', padding: '26px 28px', maxWidth: 420, width: '100%', boxShadow: 'var(--shadow)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--accent-soft)', color: 'var(--accent)', display: 'grid', placeItems: 'center', flex: 'none' }}><Icon name="refresh" size={20} stroke={1.8} /></div>
+              <h3 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 19, color: 'var(--ink)' }}>شروع دور جدید؟</h3>
+            </div>
+            <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.8 }}>
+              با شروع دور جدید، وضعیت «دریافت‌کرده» همهٔ اعضا صفر می‌شود و شماره دور به {faDigits(round + 1)} می‌رسد. ترتیب اعضا حفظ می‌شود. این کار قابل بازگشت نیست.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button onClick={() => setConfirmRound(false)} style={{ height: 42, padding: '0 18px', borderRadius: 10, background: 'var(--surface)', color: 'var(--ink-2)', border: '1px solid var(--hair)', cursor: 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600 }}>انصراف</button>
+              <button onClick={doStartNewRound} style={{ height: 42, padding: '0 20px', borderRadius: 10, background: 'var(--accent)', color: 'var(--surface)', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                <Icon name="refresh" size={16} stroke={1.9} /> شروع دور جدید
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

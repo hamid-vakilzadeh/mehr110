@@ -43,14 +43,16 @@ const toTs = (v: unknown): Timestamp =>
 const optTs = (v: unknown): Timestamp | null =>
   v == null ? null : toTs(v);
 
-/** Atomically allocate the next human receipt number from fund/config. */
-async function nextReceiptNo(tx: FirebaseFirestore.Transaction): Promise<string> {
+/** Allocate the next human receipt number from fund/config.
+ *  Firestore transactions require ALL reads before ANY writes, so this READS
+ *  the counter now and returns a `commit()` to run during the write phase. */
+async function allocReceiptNo(
+  tx: FirebaseFirestore.Transaction
+): Promise<{ no: string; commit: () => void }> {
   const ref = db.collection(COL.fund).doc(FUND_DOC.config);
   const snap = await tx.get(ref);
-  const last = (snap.data()?.lastReceiptNo as number) || 10000;
-  const next = last + 1;
-  tx.update(ref, { lastReceiptNo: next });
-  return String(next);
+  const next = ((snap.data()?.lastReceiptNo as number) || 10000) + 1;
+  return { no: String(next), commit: () => tx.update(ref, { lastReceiptNo: next }) };
 }
 
 /** Recompute & persist a member's `behind` flag from current shares. */
@@ -246,15 +248,18 @@ export const paymentsRecordSeed = onCall(async (req) => {
 
   const shareRef = db.collection(COL.members).doc(memberId).collection(COL.shares).doc(shareId);
   const out = await db.runTransaction(async (tx) => {
+    // --- READS first ---
     const snap = await tx.get(shareRef);
+    const receipt = await allocReceiptNo(tx);
     if (!snap.exists) throw new HttpsError("not-found", "سهم یافت نشد.");
     const balance = (snap.data()?.balance as number) || 0;
     const newBalance = balance + amount; // authoritative
+    // --- WRITES ---
     tx.update(shareRef, { balance: newBalance });
-    const no = await nextReceiptNo(tx);
+    receipt.commit();
     const pRef = db.collection(COL.members).doc(memberId).collection(COL.payments).doc();
-    tx.set(pRef, { type: "seed", shareId, loanId: null, no, amount, date });
-    return { newBalance, no };
+    tx.set(pRef, { type: "seed", shareId, loanId: null, no: receipt.no, amount, date });
+    return { newBalance, no: receipt.no };
   });
 
   await refreshBehind(memberId);
@@ -277,16 +282,19 @@ export const paymentsRecordInstallment = onCall(async (req) => {
 
   const loanRef = db.collection(COL.members).doc(memberId).collection(COL.loan).doc(loanId);
   const out = await db.runTransaction(async (tx) => {
+    // --- READS first ---
     const snap = await tx.get(loanRef);
+    const receipt = await allocReceiptNo(tx);
     if (!snap.exists) throw new HttpsError("not-found", "وام یافت نشد.");
     const outstanding = (snap.data()?.outstanding as number) || 0;
     const newOutstanding = Math.max(0, outstanding - amount); // authoritative
     const status = newOutstanding === 0 ? "repaid" : "active";
+    // --- WRITES ---
     tx.update(loanRef, { outstanding: newOutstanding, status });
-    const no = await nextReceiptNo(tx);
+    receipt.commit();
     const pRef = db.collection(COL.members).doc(memberId).collection(COL.payments).doc();
-    tx.set(pRef, { type: "installment", shareId: null, loanId, no, amount, date });
-    return { newOutstanding, status, no };
+    tx.set(pRef, { type: "installment", shareId: null, loanId, no: receipt.no, amount, date });
+    return { newOutstanding, status, no: receipt.no };
   });
   return { ok: true, outstanding: out.newOutstanding, status: out.status, receiptNo: out.no };
 });
