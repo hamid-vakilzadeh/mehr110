@@ -25,7 +25,7 @@ function PoolGrowth({ fund }) {
   const g = fund.growth;
   const W = 560, H = 168, padL = 72, padR = 10, padT = 16, padB = 26;
   const ys = g.map((d) => d.pool);
-  const maxY = Math.max(...ys);
+  const maxY = Math.max(1, ...ys); // avoid /0 -> NaN when the fund is empty
   // i=0 (قدیمی‌ترین) سمت راست، آخرین (امروز) سمت چپ
   const x = (i) => W - padR - (i / (g.length - 1)) * (W - padL - padR);
   const y = (v) => padT + (1 - v / maxY) * (H - padT - padB);
@@ -62,7 +62,7 @@ function PoolGrowth({ fund }) {
 /* ---------- ۲. ترکیب سرمایه — نوار افقی ۱۰۰٪ انباشته ---------- */
 function Composition({ fund }) {
   const { available, outstanding, totalPool } = fund.kpis;
-  const availPct = (available / totalPool) * 100;
+  const availPct = totalPool > 0 ? (available / totalPool) * 100 : 0;
   return (
     <Panel title={<>از <Money value={totalPool} /> تومان، <Money value={available} /> تومان هم‌اکنون آمادهٔ وام‌دهی است.</>}>
       <div style={{ display: 'flex', height: 46, borderRadius: 9, overflow: 'hidden', border: '1px solid var(--hair)' }}>
@@ -90,7 +90,7 @@ function Composition({ fund }) {
 /* ---------- ۳. موجودی به تفکیک خانواده — نوار افقی، نزولی ---------- */
 function FamilyBars({ fund }) {
   const fams = fund.families;
-  const max = fund.derived.topFamilyMax;
+  const max = fund.derived.topFamilyMax || 1; // avoid /0 -> NaN when empty
   return (
     <Panel title={<>سه خانوادهٔ نخست <strong style={{ fontWeight: 700 }}>{faPct(fund.derived.top3Pct)}٪</strong> از سرمایه را در اختیار دارند.</>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
@@ -112,6 +112,15 @@ function FamilyBars({ fund }) {
 function RotationQueue({ fund }) {
   const order = fund.loanOrder;
   const next = fund.loanNext;
+  if (!next || !order.length) {
+    return (
+      <Panel title="ترتیب وام‌گیرندگان">
+        <div style={{ fontSize: 13.5, color: 'var(--ink-3)', lineHeight: 1.9, padding: '6px 2px' }}>
+          هنوز عضوی اضافه نشده است. پس از افزودن اعضا، نوبت وام‌گیرندگان اینجا نمایش داده می‌شود.
+        </div>
+      </Panel>
+    );
+  }
   const nextIdx = order.findIndex((m) => m.id === next.id);
   const rest = order.slice(nextIdx + 1, nextIdx + 6);
   return (

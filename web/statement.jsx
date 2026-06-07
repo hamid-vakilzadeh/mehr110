@@ -74,6 +74,19 @@ function Statement() {
   const [confirmDel, setConfirmDel] = React.useState(false);
   const [deleted, setDeleted] = React.useState(false);
 
+  if (!m) {
+    return (
+      <div style={{ maxWidth: 520, margin: '0 auto', padding: '90px 22px', textAlign: 'center' }}>
+        <h2 style={{ fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)' }}>عضوی یافت نشد</h2>
+        <p style={{ fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.8, margin: '8px 0 20px' }}>هنوز عضوی در صندوق ثبت نشده است.</p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+          <a href="add-member.html" style={{ height: 44, padding: '0 20px', borderRadius: 10, background: 'var(--accent)', color: 'var(--surface)', textDecoration: 'none', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>افزودن عضو</a>
+          <a href="dashboard.html" style={{ height: 44, padding: '0 20px', borderRadius: 10, background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--hair)', textDecoration: 'none', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>بازگشت به داشبورد</a>
+        </div>
+      </div>
+    );
+  }
+
   if (deleted) {
     return (
       <div style={{ maxWidth: 520, margin: '0 auto', padding: '90px 22px' }}>

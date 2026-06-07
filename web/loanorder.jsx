@@ -15,7 +15,7 @@ function LoanOrder() {
 
   const receivedCount = order.filter((m) => m.received).length;
   const total = order.length;
-  const allReceived = receivedCount === total;
+  const allReceived = total > 0 && receivedCount === total;
   const nextId = (order.find((m) => !m.received) || {}).id;
 
   const move = (from, to) => {
@@ -83,10 +83,10 @@ function LoanOrder() {
         <div style={{ flex: 1, minWidth: 160 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-2)', marginBottom: 6 }}>
             <span>{fmt(receivedCount)} از {fmt(total)} عضو در این دور وام گرفته‌اند</span>
-            <span className="mono" style={{ fontWeight: 600, color: 'var(--accent)' }}>{faPct(Math.round((receivedCount / total) * 100))}٪</span>
+            <span className="mono" style={{ fontWeight: 600, color: 'var(--accent)' }}>{faPct(total ? Math.round((receivedCount / total) * 100) : 0)}٪</span>
           </div>
           <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{ width: `${(receivedCount / total) * 100}%`, height: '100%', background: 'var(--accent)', borderRadius: 99 }} />
+            <div style={{ width: `${total ? (receivedCount / total) * 100 : 0}%`, height: '100%', background: 'var(--accent)', borderRadius: 99 }} />
           </div>
         </div>
       </div>
@@ -104,6 +104,11 @@ function LoanOrder() {
 
       {/* reorderable list */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+        {order.length === 0 && (
+          <div style={{ padding: '28px 18px', textAlign: 'center', fontSize: 13.5, color: 'var(--ink-3)', lineHeight: 1.9 }}>
+            هنوز عضوی اضافه نشده است. پس از افزودن اعضا، ترتیب وام‌گیرندگان را اینجا می‌چینید.
+          </div>
+        )}
         {order.map((m, i) => {
           const isNext = m.id === nextId;
           const isOver = overId === m.id && dragId !== m.id;

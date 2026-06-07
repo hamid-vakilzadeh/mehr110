@@ -125,14 +125,16 @@ function ShareDetail({ m }) {
   );
 }
 
-function MemberCards({ rows, open, setOpen, onClear }) {
+function MemberCards({ rows, open, setOpen, onClear, noMembers }) {
   if (rows.length === 0) {
     return (
       <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', padding: '44px 20px', textAlign: 'center' }}>
         <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--ink-3)' }}>
-          <Icon name="search" size={24} stroke={1.4} />
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink-2)' }}>عضوی با جستجوی شما مطابقت ندارد</div>
-          <button onClick={onClear} style={{ marginTop: 4, height: 34, padding: '0 14px', borderRadius: 8, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>پاک کردن همه</button>
+          <Icon name={noMembers ? 'users' : 'search'} size={24} stroke={1.4} />
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink-2)' }}>{noMembers ? 'هنوز عضوی اضافه نشده است' : 'عضوی با جستجوی شما مطابقت ندارد'}</div>
+          {noMembers
+            ? <a href="add-member.html" style={{ marginTop: 4, height: 34, padding: '0 14px', borderRadius: 8, background: 'var(--accent)', color: 'var(--surface)', textDecoration: 'none', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>افزودن عضو</a>
+            : <button onClick={onClear} style={{ marginTop: 4, height: 34, padding: '0 14px', borderRadius: 8, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>پاک کردن همه</button>}
         </div>
       </div>
     );
@@ -262,7 +264,7 @@ function MembersTable({ fund, isMobile }) {
 
       {/* table (desktop) / cards (mobile) */}
       {isMobile ? (
-        <MemberCards rows={rows} open={open} setOpen={setOpen} onClear={() => { setQuery(''); setFamily(ALL_FAM); setBehindOnly(false); }} />
+        <MemberCards rows={rows} open={open} setOpen={setOpen} noMembers={fund.members.length === 0} onClear={() => { setQuery(''); setFamily(ALL_FAM); setBehindOnly(false); }} />
       ) : (
       <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
@@ -280,11 +282,15 @@ function MembersTable({ fund, isMobile }) {
               <tr>
                 <td colSpan={7} style={{ padding: '56px 20px', textAlign: 'center' }}>
                   <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--ink-3)' }}>
-                    <Icon name="search" size={26} stroke={1.4} />
-                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink-2)' }}>عضوی با جستجوی شما مطابقت ندارد</div>
-                    <div style={{ fontSize: 13 }}>نام دیگری را امتحان کنید یا فیلترها را پاک کنید.</div>
-                    <button onClick={() => { setQuery(''); setFamily(ALL_FAM); setBehindOnly(false); }}
-                      style={{ marginTop: 4, height: 34, padding: '0 14px', borderRadius: 8, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>پاک کردن همه</button>
+                    <Icon name={fund.members.length === 0 ? 'users' : 'search'} size={26} stroke={1.4} />
+                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink-2)' }}>{fund.members.length === 0 ? 'هنوز عضوی اضافه نشده است' : 'عضوی با جستجوی شما مطابقت ندارد'}</div>
+                    {fund.members.length === 0
+                      ? <a href="add-member.html" style={{ marginTop: 4, height: 34, padding: '0 14px', borderRadius: 8, background: 'var(--accent)', color: 'var(--surface)', textDecoration: 'none', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>افزودن عضو</a>
+                      : <>
+                        <div style={{ fontSize: 13 }}>نام دیگری را امتحان کنید یا فیلترها را پاک کنید.</div>
+                        <button onClick={() => { setQuery(''); setFamily(ALL_FAM); setBehindOnly(false); }}
+                          style={{ marginTop: 4, height: 34, padding: '0 14px', borderRadius: 8, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>پاک کردن همه</button>
+                      </>}
                   </div>
                 </td>
               </tr>

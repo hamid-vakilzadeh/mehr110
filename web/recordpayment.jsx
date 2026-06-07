@@ -60,11 +60,23 @@ function Segmented2({ value, onChange, options }) {
 
 function RecordPayment() {
   const fund = window.FUND;
+  const actives = fund.members.filter((m) => m.status === 'active');
+  if (!actives.length) {
+    return (
+      <div style={{ maxWidth: 520, margin: '0 auto', padding: '90px 22px', textAlign: 'center' }}>
+        <h2 style={{ fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)' }}>عضوی برای ثبت پرداخت نیست</h2>
+        <p style={{ fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.8, margin: '8px 0 20px' }}>ابتدا یک عضو اضافه کنید، سپس می‌توانید پرداخت ثبت کنید.</p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+          <a href="add-member.html" style={{ height: 44, padding: '0 20px', borderRadius: 10, background: 'var(--accent)', color: 'var(--surface)', textDecoration: 'none', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>افزودن عضو</a>
+          <a href="dashboard.html" style={{ height: 44, padding: '0 20px', borderRadius: 10, background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--hair)', textDecoration: 'none', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>بازگشت به داشبورد</a>
+        </div>
+      </div>
+    );
+  }
   const isMobile = useIsMobile();
   const PAR = fund.settings.parValue;
   const FEE = fund.settings.membershipFee;
   const INST = Math.round(PAR / fund.settings.defaultInstallments);
-  const actives = fund.members.filter((m) => m.status === 'active');
 
   // default to a member currently funding a share
   const defId = (fund.purchasing[0] || actives[0]).id;
