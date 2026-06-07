@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>صندوق مهر۱۱۰</title>
+<link rel="stylesheet" href="/tokens.css" />
+<script>
+  /* Resolve friendly URLs: a clean path like /dashboard -> /dashboard.html.
+     Anything else (or a truly missing file) -> the login / landing page.
+     Guards against loops: paths that already have an extension go to index. */
+  (function () {
+    var p = (location.pathname || '').replace(/\/+$/, '');
+    if (p && !/\.[a-z0-9]+$/i.test(p)) {
+      location.replace(p + '.html' + location.search + location.hash);
+    } else {
+      location.replace('/index.html');
+    }
+  })();
+</script>
+<style>
+  body { min-height: 100vh; display: grid; place-items: center; margin: 0; font-family: var(--sans, system-ui); background: var(--paper, #faf9f7); color: var(--ink, #2b2823); }
+  .box { text-align: center; padding: 24px; }
+  .box h1 { font-family: var(--serif, system-ui); font-weight: 600; font-size: 22px; margin: 0 0 8px; }
+  .box p { color: var(--ink-3, #888); font-size: 14px; margin: 0 0 16px; }
+  .box a { color: var(--accent, #2f6b4f); font-weight: 600; text-decoration: none; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <h1>صندوق مهر۱۱۰</h1>
+    <p>در حال انتقال…</p>
+    <a href="/index.html">رفتن به صفحهٔ ورود ↗</a>
+  </div>
+</body>
+</html>
