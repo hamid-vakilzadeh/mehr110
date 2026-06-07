@@ -13,6 +13,18 @@ an API** — the browser never writes the database directly.
 > [Security](#security) — service-account keys, `.env` files and emulator data
 > are all git-ignored, and the seed data is synthetic (fake names/numbers).
 
+## 🌐 Live deployment
+
+Deployed to Firebase project **`mehr110-62009`** and running in **LIVE** mode:
+
+- **App:** https://mehr110-62009.web.app
+- **Backend:** 22 Cloud Functions (us-central1), Firestore (nam5) + security rules, Email/Password Auth.
+- **Login:** the single manager account (admin). Created via
+  `functions/scripts/bootstrapLive.js`; manage it in the
+  [Auth console](https://console.firebase.google.com/project/mehr110-62009/authentication/users).
+
+Re-deploy after changes: `firebase deploy` (hosting + functions + rules).
+
 ---
 
 ## Two run modes
