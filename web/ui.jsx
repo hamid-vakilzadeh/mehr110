@@ -41,6 +41,7 @@ const ICON_PATHS = {
   trash:   <><polyline points="4 7 20 7" /><path d="M9 7V4.5h6V7" /><path d="M6 7l1 13h10l1-13" /><line x1="10" y1="11" x2="10" y2="16" /><line x1="14" y1="11" x2="14" y2="16" /></>,
   refresh: <><path d="M20 11a8 8 0 0 0-14-4.5L4 8" /><polyline points="4 4 4 8 8 8" /><path d="M4 13a8 8 0 0 0 14 4.5L20 16" /><polyline points="20 20 20 16 16 16" /></>,
   logout:  <><path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" /><polyline points="9 8 5 12 9 16" /><line x1="5" y1="12" x2="15" y2="12" /></>,
+  settings:<><line x1="4" y1="8" x2="20" y2="8" /><line x1="4" y1="16" x2="20" y2="16" /><circle cx="9" cy="8" r="2.4" /><circle cx="15" cy="16" r="2.4" /></>,
 };
 
 function Icon({ name, size = 16, stroke = 1.6, className = '', style = {} }) {

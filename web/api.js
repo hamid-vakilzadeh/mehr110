@@ -207,5 +207,31 @@
     markReceived: function (memberId, received) { return call("loanOrderMarkReceived", { memberId: memberId, received: received }); },
     startNewRound: function () { return call("loanOrderStartNewRound", {}); },
     updateSettings: function (d) { return call("settingsUpdate", d); },
+
+    // current admin display name / email (for the settings page + UI)
+    adminName: function () {
+      if (LIVE) { var u = window.__fbUser; return (u && (u.displayName || u.email)) || ""; }
+      try { var s = JSON.parse(localStorage.getItem("ff_auth") || "null"); return (s && s.name) || ""; } catch (e) { return ""; }
+    },
+    adminEmail: function () {
+      if (LIVE) { var u = window.__fbUser; return (u && u.email) || ""; }
+      return "";
+    },
+    setAdminName: async function (name) {
+      if (!LIVE) {
+        try { var s = JSON.parse(localStorage.getItem("ff_auth") || "null") || {}; s.name = name; localStorage.setItem("ff_auth", JSON.stringify(s)); } catch (e) {}
+        return { ok: true, name: name };
+      }
+      var res = await call("setAdminName", { name: name });
+      // refresh the cached user + token so the new name flows into audit writes
+      try {
+        if (fb.auth && fb.auth.currentUser) {
+          await fb.auth.currentUser.reload();
+          await fb.auth.currentUser.getIdToken(true);
+          window.__fbUser = fb.auth.currentUser;
+        }
+      } catch (e) {}
+      return res;
+    },
   };
 })();

@@ -43,6 +43,14 @@ const toTs = (v: unknown): Timestamp =>
 const optTs = (v: unknown): Timestamp | null =>
   v == null ? null : toTs(v);
 
+/** Audit stamp for every write — which admin recorded it, and when.
+ *  name comes from the Firebase displayName (token.name) or email. */
+const rec = (req: CallableRequest) => ({
+  recordedBy: req.auth?.uid ?? null,
+  recordedByName: req.auth?.token?.name || req.auth?.token?.email || req.auth?.uid || null,
+  recordedAt: FieldValue.serverTimestamp(),
+});
+
 /** Allocate the next human receipt number from fund/config.
  *  Firestore transactions require ALL reads before ANY writes, so this READS
  *  the counter now and returns a `commit()` to run during the write phase. */
@@ -76,6 +84,18 @@ export const setAdminRole = onCall(async (req: CallableRequest) => {
   const user = await getAuth().getUserByEmail(email);
   await getAuth().setCustomUserClaims(user.uid, { role: "admin" });
   return { ok: true, uid: user.uid };
+});
+
+/** Update the signed-in admin's display name (shown in audit trail + UI). */
+export const setAdminName = onCall(async (req: CallableRequest) => {
+  const uid = requireAdmin(req);
+  const name = str(req.data?.name, "نام");
+  await getAuth().updateUser(uid, { displayName: name });
+  await db.collection("admins").doc(uid).set(
+    { name, email: req.auth?.token?.email ?? null, updatedAt: FieldValue.serverTimestamp() },
+    { merge: true }
+  );
+  return { ok: true, name };
 });
 
 // ============================================================
@@ -123,6 +143,7 @@ export const membersCreate = onCall(async (req) => {
     loanReceived: false,
     loanPos: 0,
     createdAt: FieldValue.serverTimestamp(),
+    ...rec(req),
   });
   // initial shares — each opens at balance 0 (under-funded, not loan-eligible)
   const labels = ["سهم الف", "سهم ب", "سهم ج", "سهم د", "سهم ه"];
@@ -171,6 +192,7 @@ export const membersUpdate = onCall(async (req) => {
   if (Object.keys(patch).length === 0) {
     throw new HttpsError("invalid-argument", "هیچ فیلدی برای به‌روزرسانی ارسال نشده است.");
   }
+  Object.assign(patch, rec(req));
   await ref.update(patch);
   return { ok: true, id };
 });
@@ -221,7 +243,7 @@ export const sharesAdd = onCall(async (req) => {
   const labels = ["سهم الف", "سهم ب", "سهم ج", "سهم د", "سهم ه"];
   const label = optStr(req.data?.label) ?? labels[count] ?? `سهم ${count + 1}`;
   const sRef = ref.collection(COL.shares).doc();
-  await sRef.set({ label, openedAt: FieldValue.serverTimestamp(), balance: 0 });
+  await sRef.set({ label, openedAt: FieldValue.serverTimestamp(), balance: 0, ...rec(req) });
   return { ok: true, shareId: sRef.id, label };
 });
 
@@ -258,7 +280,7 @@ export const paymentsRecordSeed = onCall(async (req) => {
     tx.update(shareRef, { balance: newBalance });
     receipt.commit();
     const pRef = db.collection(COL.members).doc(memberId).collection(COL.payments).doc();
-    tx.set(pRef, { type: "seed", shareId, loanId: null, no: receipt.no, amount, date });
+    tx.set(pRef, { type: "seed", shareId, loanId: null, no: receipt.no, amount, date, ...rec(req) });
     return { newBalance, no: receipt.no };
   });
 
@@ -293,7 +315,7 @@ export const paymentsRecordInstallment = onCall(async (req) => {
     tx.update(loanRef, { outstanding: newOutstanding, status });
     receipt.commit();
     const pRef = db.collection(COL.members).doc(memberId).collection(COL.payments).doc();
-    tx.set(pRef, { type: "installment", shareId: null, loanId, no: receipt.no, amount, date });
+    tx.set(pRef, { type: "installment", shareId: null, loanId, no: receipt.no, amount, date, ...rec(req) });
     return { newOutstanding, status, no: receipt.no };
   });
   return { ok: true, outstanding: out.newOutstanding, status: out.status, receiptNo: out.no };
@@ -367,6 +389,7 @@ export const loansIssue = onCall(async (req) => {
     outstanding, // authoritative — decremented by installments
     status,
     issuedAt: issuedAt ?? FieldValue.serverTimestamp(),
+    ...rec(req),
   });
   // receiving a loan = received in the current round
   await db.collection(COL.members).doc(memberId).update({ loanReceived: true });
@@ -405,7 +428,7 @@ export const loanOrderReorder = onCall(async (req) => {
   }
   const rotRef = db.collection(COL.fund).doc(FUND_DOC.loanRotation);
   const batch = db.batch();
-  batch.set(rotRef, { order }, { merge: true }); // positions only; received unchanged
+  batch.set(rotRef, { order, ...rec(req) }, { merge: true }); // positions only; received unchanged
   (order as string[]).forEach((id, i) => {
     batch.update(db.collection(COL.members).doc(id), { loanPos: i + 1 });
   });
@@ -419,7 +442,7 @@ export const loanOrderMarkReceived = onCall(async (req) => {
   const received = !!req.data?.received;
   const ref = db.collection(COL.members).doc(memberId);
   if (!(await ref.get()).exists) throw new HttpsError("not-found", "عضو یافت نشد.");
-  await ref.update({ loanReceived: received }); // keeps position; only flags
+  await ref.update({ loanReceived: received, ...rec(req) }); // keeps position; only flags
   return { ok: true };
 });
 
@@ -430,7 +453,7 @@ export const loanOrderStartNewRound = onCall(async (req) => {
   const batch = db.batch();
   members.docs.forEach((d) => batch.update(d.ref, { loanReceived: false }));
   const round = (await getRotation()).round + 1;
-  batch.set(rotRef, { round }, { merge: true });
+  batch.set(rotRef, { round, ...rec(req) }, { merge: true });
   await batch.commit();
   return { ok: true, round };
 });
@@ -465,7 +488,7 @@ export const settingsUpdate = onCall(async (req) => {
     throw new HttpsError("invalid-argument", "هیچ تنظیمی برای به‌روزرسانی ارسال نشده است.");
   }
   // INVARIANT 6: changing fee/par NEVER recomputes a stored balance.
-  await db.collection(COL.fund).doc(FUND_DOC.config).update(patch);
+  await db.collection(COL.fund).doc(FUND_DOC.config).update({ ...patch, ...rec(req) });
   return { ok: true, ...patch };
 });
 

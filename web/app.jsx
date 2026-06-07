@@ -67,60 +67,49 @@ function App() {
             <div style={{ fontSize: 13.5, color: 'var(--ink-3)', marginTop: 5 }}>حلقهٔ پس‌انداز و وام خانوادگی</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="add-member.html" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 16px',
-            borderRadius: 10, background: 'var(--accent)', color: 'var(--surface)', textDecoration: 'none',
-            fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap',
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <a href="settings.html" title="تنظیمات" aria-label="تنظیمات" style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40,
+            borderRadius: 10, border: '1px solid var(--hair)', background: 'var(--surface)', textDecoration: 'none',
+            color: 'var(--ink-2)', flex: 'none',
           }}>
-            <Icon name="userPlus" size={16} stroke={1.8} /> افزودن عضو
+            <Icon name="settings" size={18} stroke={1.7} />
           </a>
-          {!isMobile && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: 'var(--ink-3)', border: '1px solid var(--hair)', borderRadius: 99, padding: '5px 11px', whiteSpace: 'nowrap' }}>
-            <span style={{ width: 6, height: 6, borderRadius: 99, background: 'var(--fill-1)' }} />فقط خواندنی
-          </span>}
-          <button onClick={() => window.ffAuth && window.ffAuth.logout()} title="خروج از حساب" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 13px',
+          <button onClick={() => window.ffAuth && window.ffAuth.logout()} title="خروج از حساب" aria-label="خروج" style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40,
             borderRadius: 10, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: 'pointer',
-            font: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--ink-2)', whiteSpace: 'nowrap',
+            color: 'var(--ink-2)', flex: 'none', font: 'inherit',
           }}>
-            <Icon name="logout" size={16} stroke={1.8} /> خروج
+            <Icon name="logout" size={18} stroke={1.8} />
           </button>
         </div>
       </header>
 
-      {/* ---- settings strip (informational, drives no balances) ---- */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 0, flexWrap: 'wrap', marginBottom: 20,
-        background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', padding: '4px 4px',
-      }}>
-        {[
-          ['حق عضویت ماهانه', `${fmt(fund.settings.membershipFee)} تومان`, 'coins'],
-          ['اقساط پیش‌فرض سهم', fmt(fund.settings.defaultInstallments), 'rows'],
-          ['ارزش کامل سهم (این ماه)', `${fmt(fund.settings.parValue)} تومان`, 'star'],
-          ['ماه آینده', `${fmt(fund.settings.parNext)} تومان`, 'arrowUpRight'],
-        ].map(([label, val, icon], i) => (
-          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderInlineStart: i ? '1px solid var(--hair-2)' : 'none', flex: '1 1 auto', minWidth: 0 }}>
-            <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--surface-2)', color: 'var(--ink-3)', display: 'grid', placeItems: 'center', flex: 'none' }}><Icon name={icon} size={15} /></span>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 11, color: 'var(--ink-3)', whiteSpace: 'nowrap' }}>{label}</div>
-              <div className="mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap' }}>{val}</div>
-            </div>
-          </div>
-        ))}
-        <a href="record-payment.html" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 16px', margin: '0 6px',
-          borderRadius: 9, background: 'var(--surface-2)', color: 'var(--ink)', textDecoration: 'none',
-          fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', border: '1px solid var(--hair)',
+      {/* ---- actions ---- */}
+      <div style={{ marginBottom: 22 }}>
+        <a href="add-member.html" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, width: '100%', boxSizing: 'border-box',
+          borderRadius: 'var(--radius)', background: 'var(--accent)', color: 'var(--surface)', textDecoration: 'none',
+          fontSize: 14.5, fontWeight: 600,
         }}>
-          <Icon name="check" size={15} stroke={2} /> ثبت پرداخت
+          <Icon name="userPlus" size={18} stroke={1.8} /> افزودن عضو
         </a>
-        <a href="record-loan.html" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 16px', margin: '0 6px 0 0',
-          borderRadius: 9, background: 'var(--surface-2)', color: 'var(--ink)', textDecoration: 'none',
-          fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', border: '1px solid var(--hair)',
-        }}>
-          <Icon name="coins" size={15} stroke={1.7} /> ثبت وام
-        </a>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+          <a href="record-payment.html" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, height: 44, boxSizing: 'border-box',
+            borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--ink)', textDecoration: 'none',
+            fontSize: 14, fontWeight: 600, border: '1px solid var(--hair)',
+          }}>
+            <Icon name="check" size={16} stroke={2} /> ثبت پرداخت
+          </a>
+          <a href="record-loan.html" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, height: 44, boxSizing: 'border-box',
+            borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--ink)', textDecoration: 'none',
+            fontSize: 14, fontWeight: 600, border: '1px solid var(--hair)',
+          }}>
+            <Icon name="coins" size={16} stroke={1.7} /> ثبت وام
+          </a>
+        </div>
       </div>
 
       {/* ---- KPI band ---- */}
