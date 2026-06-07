@@ -80,10 +80,6 @@ function App() {
           {!isMobile && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: 'var(--ink-3)', border: '1px solid var(--hair)', borderRadius: 99, padding: '5px 11px', whiteSpace: 'nowrap' }}>
             <span style={{ width: 6, height: 6, borderRadius: 99, background: 'var(--fill-1)' }} />فقط خواندنی
           </span>}
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)' }}>تا تاریخِ</div>
-            <div style={{ fontFamily: 'var(--serif)', fontSize: 17, color: 'var(--ink)', marginTop: 2 }}>{fund.meta.asOf}</div>
-          </div>
           <button onClick={() => window.ffAuth && window.ffAuth.logout()} title="خروج از حساب" style={{
             display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 13px',
             borderRadius: 10, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: 'pointer',
@@ -119,6 +115,13 @@ function App() {
           fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', border: '1px solid var(--hair)',
         }}>
           <Icon name="check" size={15} stroke={2} /> ثبت پرداخت
+        </a>
+        <a href="record-loan.html" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 16px', margin: '0 6px 0 0',
+          borderRadius: 9, background: 'var(--surface-2)', color: 'var(--ink)', textDecoration: 'none',
+          fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', border: '1px solid var(--hair)',
+        }}>
+          <Icon name="coins" size={15} stroke={1.7} /> ثبت وام
         </a>
       </div>
 

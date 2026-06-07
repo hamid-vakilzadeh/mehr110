@@ -318,45 +318,59 @@ export const loansIssue = onCall(async (req) => {
   const memberId = str(d.memberId, "memberId");
   const principal = assertPositiveInt(d.principal, "اصل وام");
   const termMonths = assertPositiveInt(d.termMonths, "مدت (ماه)");
+  const monthly =
+    d.monthly !== undefined ? assertPositiveInt(d.monthly, "قسط ماهانه") : monthlyOf(principal, termMonths);
+  // installments already paid — lets the admin record a loan that predates the app
+  const installmentsPaid = Math.max(0, Math.min(termMonths, Math.floor(Number(d.installmentsPaid) || 0)));
+  const existing = !!d.existing; // recording a pre-existing (off-app) loan
+  const issuedAt = optTs(d.issuedAt);
+
+  // outstanding is authoritative; derived once here from principal − paid·monthly
+  const outstanding = Math.max(0, principal - installmentsPaid * monthly);
 
   const cfg = await getConfig();
   const member = await loadMember(memberId, cfg.parValue);
   if (!member) throw new HttpsError("not-found", "عضو یافت نشد.");
-
-  // INVARIANT 1: only a loan-eligible member (>=1 share funded to par)...
-  if (!member.loanEligible) {
-    throw new HttpsError(
-      "failed-precondition",
-      "این عضو واجد شرایط وام نیست — دست‌کم یک سهم باید تا ارزش کامل تأمین شده باشد."
-    );
-  }
   if (member.loan && member.loan.status === "active") {
     throw new HttpsError("failed-precondition", "این عضو هم‌اکنون یک وام فعال دارد.");
   }
-  // ...AND only if available >= principal
-  const all = await loadAllMembers(cfg.parValue);
-  const totalPool = all.reduce((t, m) => t + m.seedBalance, 0);
-  const outstanding = all.reduce((t, m) => t + (m.loan ? m.loan.outstanding : 0), 0);
-  const available = totalPool - outstanding;
-  if (principal > available) {
-    throw new HttpsError(
-      "failed-precondition",
-      `مبلغ وام از موجودی قابل وام‌دهی (${available} تومان) بیشتر است.`
-    );
+
+  // For a NEW loan, enforce the fund's rules. When RECORDING a pre-existing
+  // loan (`existing`), the money already left the fund historically, so skip
+  // the eligibility + available checks — the admin is entering ground truth.
+  if (!existing) {
+    if (!member.loanEligible) {
+      throw new HttpsError(
+        "failed-precondition",
+        "این عضو واجد شرایط وام نیست — دست‌کم یک سهم باید تا ارزش کامل تأمین شده باشد."
+      );
+    }
+    const all = await loadAllMembers(cfg.parValue);
+    const totalPool = all.reduce((t, m) => t + m.seedBalance, 0);
+    const lent = all.reduce((t, m) => t + (m.loan ? m.loan.outstanding : 0), 0);
+    const available = totalPool - lent;
+    // only the still-outstanding amount actually leaves the pool
+    if (outstanding > available) {
+      throw new HttpsError(
+        "failed-precondition",
+        `مبلغ وام از موجودی قابل وام‌دهی (${available} تومان) بیشتر است.`
+      );
+    }
   }
 
+  const status = outstanding === 0 ? "repaid" : "active";
   const loanRef = db.collection(COL.members).doc(memberId).collection(COL.loan).doc();
   await loanRef.set({
     principal,
     termMonths,
-    monthly: monthlyOf(principal, termMonths),
-    outstanding: principal, // authoritative — decremented by installments
-    status: "active",
-    issuedAt: FieldValue.serverTimestamp(),
+    monthly,
+    outstanding, // authoritative — decremented by installments
+    status,
+    issuedAt: issuedAt ?? FieldValue.serverTimestamp(),
   });
   // receiving a loan = received in the current round
   await db.collection(COL.members).doc(memberId).update({ loanReceived: true });
-  return { ok: true, loanId: loanRef.id };
+  return { ok: true, loanId: loanRef.id, outstanding, monthly, status };
 });
 
 export const loansGet = onCall(async (req) => {
