@@ -30,7 +30,7 @@ function SField({ label, hint, children }) {
 function NumberField({ label, hint, value, onChange, readOnly }) {
   return (
     <SField label={label} hint={hint}>
-      <input value={value} readOnly={readOnly}
+      <input value={value} readOnly={readOnly} inputMode="numeric"
         onChange={readOnly ? undefined : (e) => onChange(e.target.value.replace(/[^0-9]/g, ''))}
         className="mono"
         style={{ ...sInput, direction: 'ltr', textAlign: 'left', color: readOnly ? 'var(--ink-3)' : 'var(--ink)', background: readOnly ? 'var(--surface-2)' : 'var(--surface)' }} />
@@ -88,7 +88,7 @@ function Settings() {
     if (!(Number(inst) > 0) || !(Number(par) > 0)) { setSetErr('اقساط و ارزش سهم باید بزرگ‌تر از صفر باشند.'); return; }
     setSetErr(''); setSetState('saving');
     try {
-      await api.updateSettings({ membershipFee: Number(fee) || 0, defaultInstallments: Number(inst), parValue: Number(par), loanPerShare: Number(lps) || 0 });
+      await api.updateSettings({ membershipFee: Number(fee) || 0, defaultInstallments: Number(inst), loanPerShare: Number(lps) || 0 });
       setSetState('saved'); setTimeout(() => setSetState('idle'), 2200);
     } catch (e) { setSetErr('خطا در ذخیره: ' + (e && e.message ? e.message : e)); setSetState('idle'); }
   };
@@ -131,7 +131,7 @@ function Settings() {
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
           <NumberField label="حق عضویت ماهانه (تومان)" value={fee} onChange={setFee} />
           <NumberField label="اقساط پیش‌فرض سهم" value={inst} onChange={setInst} />
-          <NumberField label="حداقل پس‌انداز هر سهم — این ماه (تومان)" value={par} onChange={setPar} hint="هر سهم برای واجد شرایط وام شدن باید این مبلغ تأمین شود" />
+          <NumberField label="حداقل پس‌انداز هر سهم — این ماه (تومان)" value={par} readOnly hint="هر ماه خودکار به اندازهٔ حق عضویت بالا می‌رود (غیرقابل‌ویرایش)" />
           <NumberField label="ماه آینده (تومان)" value={String(parNext)} readOnly hint="حداقل پس‌انداز + حق عضویت ماهانه" />
           <NumberField label="سقف وام هر سهم (تومان)" value={lps} onChange={setLps} hint="وام هر عضو = سهم‌های تأمین‌شده × این مبلغ" />
         </div>

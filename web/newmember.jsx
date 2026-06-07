@@ -55,6 +55,7 @@ function RepeatList({ items, setItems, placeholder, addLabel, mono, kind }) {
             <Icon name={kind === 'phone' ? 'user' : 'coins'} size={14} />
           </span>
           <input value={it} onChange={(e) => update(i, e.target.value)} placeholder={placeholder} className={mono ? 'mono' : ''}
+            inputMode={kind === 'phone' ? 'tel' : 'numeric'}
             style={{ ...inputStyle, height: 40, direction: mono ? 'ltr' : 'rtl', textAlign: mono ? 'left' : 'right' }} />
           {items.length > 1 && (
             <button type="button" onClick={() => remove(i)} title="حذف"

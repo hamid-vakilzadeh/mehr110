@@ -63,6 +63,36 @@ async function allocReceiptNo(
   return { no: String(next), commit: () => tx.update(ref, { lastReceiptNo: next }) };
 }
 
+/** Current Jalali year*12+(month-1), in Asia/Tehran (authoritative month boundary). */
+function currentJalaliYM(): number {
+  const parts = new Intl.DateTimeFormat("en-US-u-ca-persian", {
+    year: "numeric", month: "numeric", numberingSystem: "latn", timeZone: "Asia/Tehran",
+  }).formatToParts(new Date());
+  const jy = Number(parts.find((p) => p.type === "year")!.value);
+  const jm = Number(parts.find((p) => p.type === "month")!.value);
+  return jy * 12 + (jm - 1);
+}
+
+/** Advance parValue by membershipFee for each Jalali month elapsed since parMonth.
+ *  Each step uses the CURRENT fee at the time it runs, so a later fee change is
+ *  never applied retrospectively. parValue is otherwise immutable. */
+async function advanceParIfNeeded(): Promise<void> {
+  const ref = db.collection(COL.fund).doc(FUND_DOC.config);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+    const c = snap.data() as Record<string, unknown>;
+    const curYM = currentJalaliYM();
+    if (typeof c.parMonth !== "number") { tx.update(ref, { parMonth: curYM }); return; }
+    let parMonth = c.parMonth as number;
+    let par = Number(c.parValue) || 0;
+    const fee = Number(c.membershipFee) || 0;
+    let steps = 0;
+    while (parMonth < curYM && steps < 36) { par += fee; parMonth += 1; steps += 1; }
+    if (steps > 0) tx.update(ref, { parValue: par, parMonth, asOf: FieldValue.serverTimestamp() });
+  });
+}
+
 /** Recompute & persist a member's `behind` flag from current shares. */
 async function refreshBehind(memberId: string): Promise<void> {
   const cfg = await getConfig();
@@ -484,7 +514,7 @@ export const settingsUpdate = onCall(async (req) => {
   if (d.membershipFee !== undefined) patch.membershipFee = assertAmount(d.membershipFee, "حق عضویت");
   if (d.defaultInstallments !== undefined)
     patch.defaultInstallments = assertPositiveInt(d.defaultInstallments, "اقساط پیش‌فرض");
-  if (d.parValue !== undefined) patch.parValue = assertPositiveInt(d.parValue, "حداقل پس‌انداز هر سهم");
+  // parValue is immutable here — it auto-advances monthly (see advanceParIfNeeded).
   if (d.loanPerShare !== undefined) patch.loanPerShare = assertPositiveInt(d.loanPerShare, "سقف وام هر سهم");
   if (Object.keys(patch).length === 0) {
     throw new HttpsError("invalid-argument", "هیچ تنظیمی برای به‌روزرسانی ارسال نشده است.");
@@ -500,6 +530,7 @@ export const settingsUpdate = onCall(async (req) => {
 
 export const dashboard = onCall(async (req) => {
   requireAdmin(req); // the manager's aggregate view — admin only ("hers alone")
+  await advanceParIfNeeded(); // roll parValue forward for any elapsed Jalali months
   return buildDashboard();
 });
 

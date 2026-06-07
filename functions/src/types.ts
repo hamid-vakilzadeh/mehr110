@@ -59,7 +59,8 @@ export interface ConfigDoc {
   currency: string;
   membershipFee: number; // expected monthly fee — drives NO balance math
   defaultInstallments: number; // UI default only
-  parValue: number; // minimum member savings PER SHARE this period (variable monthly)
+  parValue: number; // minimum member savings PER SHARE this period (auto-advances monthly; immutable in UI)
+  parMonth: number; // Jalali year*12+(month-1) that parValue is current as-of
   loanPerShare: number; // max loan a single fully-funded share qualifies for
   asOf: Timestamp;
 }

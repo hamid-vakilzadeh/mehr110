@@ -102,8 +102,10 @@ function RecordPayment() {
   const newVal = isLoan ? Math.max(0, member.loan.outstanding - amt) : member.seedBalance + amt;
   const nowEligible = !isLoan && member.seedBalance < PAR && member.seedBalance + amt >= PAR;
   const loanCleared = isLoan && newVal === 0;
+  const futureDate = (yr > today.y) || (yr === today.y && mo > today.m) || (yr === today.y && mo === today.m && d > today.d);
 
   const submit = async () => {
+    if (futureDate) { alert('تاریخ پرداخت نمی‌تواند بعد از امروز باشد.'); return; }
     if (window.API && window.API.live) {
       try {
         const date = window.API.jalaliToMs(yr, mo, d);
@@ -197,7 +199,7 @@ function RecordPayment() {
 
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.6fr', gap: 14 }}>
           <FieldRP label="مبلغ (تومان)" hint={isLoan ? `قسط ماهانه: ${fmt(member.loan.monthly)} — می‌توانید بیشتر بپردازید` : `حق عضویت: ${fmt(FEE)} — مبلغ آزاد است`}>
-            <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))} className="mono"
+            <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))} className="mono" inputMode="numeric"
               style={{ ...rpInput, direction: 'ltr', textAlign: 'left' }} />
           </FieldRP>
           <FieldRP label="تاریخ پرداخت">
@@ -233,11 +235,16 @@ function RecordPayment() {
             <Icon name="check" size={14} stroke={2.2} /> با این پرداخت، وام به‌طور کامل بازپرداخت می‌شود.
           </div>
         )}
+        {futureDate && (
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warn)', display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: -6 }}>
+            <Icon name="alert" size={14} stroke={1.8} /> تاریخ نمی‌تواند بعد از امروز باشد.
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
         <a href="dashboard.html" style={{ height: 44, padding: '0 20px', borderRadius: 10, background: 'var(--surface)', color: 'var(--ink-2)', border: '1px solid var(--hair)', textDecoration: 'none', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>انصراف</a>
-        <button onClick={submit} disabled={!amt} style={{ height: 44, padding: '0 24px', borderRadius: 10, background: amt ? 'var(--accent)' : 'var(--fill-2)', color: 'var(--surface)', border: 'none', cursor: amt ? 'pointer' : 'not-allowed', font: 'inherit', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+        <button onClick={submit} disabled={!amt || futureDate} style={{ height: 44, padding: '0 24px', borderRadius: 10, background: !amt || futureDate ? 'var(--fill-2)' : 'var(--accent)', color: 'var(--surface)', border: 'none', cursor: !amt || futureDate ? 'not-allowed' : 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
           <Icon name="check" size={17} stroke={2} /> ثبت پرداخت
         </button>
       </div>

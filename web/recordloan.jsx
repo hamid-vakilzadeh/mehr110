@@ -39,7 +39,7 @@ function FieldRL({ label, children, hint }) {
 
 function NumInput({ value, onChange, placeholder }) {
   return (
-    <input value={value} onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ''))} className="mono" placeholder={placeholder}
+    <input value={value} onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ''))} className="mono" placeholder={placeholder} inputMode="numeric"
       style={{ ...rlInput, direction: 'ltr', textAlign: 'left' }} />
   );
 }
@@ -88,15 +88,20 @@ function RecordLoan() {
 
   const P = Number(principal) || 0;
   const term_ = Math.max(1, Number(term) || 1);
-  const paid_ = Math.max(0, Math.min(term_, Number(paid) || 0));
+  const isExisting = existing; // the toggle is the explicit gate
+  const paid_ = isExisting ? Math.max(0, Math.min(term_, Number(paid) || 0)) : 0;
   const monthly = P > 0 ? Math.round(P / term_) : 0;
   const outstanding = Math.max(0, P - paid_ * monthly);
   const pct = P > 0 ? Math.min(100, Math.round(((P - outstanding) / P) * 100)) : 0;
-  const isExisting = existing || paid_ > 0; // a partly-paid loan is inherently pre-existing
+  const overCap = !isExisting && P > (member.maxLoan || 0); // new loan can't exceed eligibility
+  const futureDate = (yr > today.y) || (yr === today.y && mo > today.m) || (yr === today.y && mo === today.m && d > today.d);
+  const blocked = !P || overCap || futureDate;
 
   const submit = async () => {
     setErr('');
     if (!P) { setErr('مبلغ (اصل) وام را وارد کنید.'); return; }
+    if (overCap) { setErr(`سقف وام این عضو ${fmt(member.maxLoan)} تومان است.`); return; }
+    if (futureDate) { setErr('تاریخ نمی‌تواند بعد از امروز باشد.'); return; }
     if (window.API && window.API.live) {
       try {
         const issuedAt = window.API.jalaliToMs(yr, mo, d);
@@ -195,10 +200,21 @@ function RecordLoan() {
           </FieldRL>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.6fr', gap: 14 }}>
-          <FieldRL label="اقساط پرداخت‌شده" hint="برای ثبت وام‌های پیشین">
-            <NumInput value={paid} onChange={setPaid} placeholder="0" />
-          </FieldRL>
+        {/* pre-existing override FIRST — it gates the installments-paid field */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface-2)', borderRadius: 12, padding: '12px 16px' }}>
+          <ToggleRL on={isExisting} onChange={(v) => setExisting(v)} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>ثبت وام از پیش‌موجود</div>
+            <div style={{ fontSize: 11.5, color: 'var(--ink-3)', lineHeight: 1.6 }}>برای وام‌های پیش از برنامه؛ بدون بررسی واجد شرایط بودن و موجودی صندوق، و با امکان واردکردن اقساط پرداخت‌شده.</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : (isExisting ? '1fr 1.6fr' : '1fr'), gap: 14 }}>
+          {isExisting && (
+            <FieldRL label="اقساط پرداخت‌شده" hint="برای ثبت وام‌های پیشین">
+              <NumInput value={paid} onChange={setPaid} placeholder="0" />
+            </FieldRL>
+          )}
           <FieldRL label="تاریخ پرداخت وام">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 1.2fr', gap: 8 }}>
               <RLSelect value={d} onChange={(v) => setD(Number(v))}>
@@ -212,15 +228,6 @@ function RecordLoan() {
               </RLSelect>
             </div>
           </FieldRL>
-        </div>
-
-        {/* pre-existing override (auto-on when installments are already paid) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface-2)', borderRadius: 12, padding: '12px 16px' }}>
-          <ToggleRL on={isExisting} onChange={(v) => setExisting(v)} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>ثبت وام از پیش‌موجود</div>
-            <div style={{ fontSize: 11.5, color: 'var(--ink-3)', lineHeight: 1.6 }}>برای وام‌های پیش از برنامه؛ بدون بررسی واجد شرایط بودن و موجودی صندوق ثبت می‌شود.{paid_ > 0 ? ' (به‌خاطر اقساط پرداخت‌شده فعال است)' : ''}</div>
-          </div>
         </div>
 
         {/* live preview */}
@@ -241,7 +248,7 @@ function RecordLoan() {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
         <a href="dashboard.html" style={{ height: 44, padding: '0 20px', borderRadius: 10, background: 'var(--surface)', color: 'var(--ink-2)', border: '1px solid var(--hair)', textDecoration: 'none', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>انصراف</a>
-        <button onClick={submit} disabled={!P} style={{ height: 44, padding: '0 24px', borderRadius: 10, background: P ? 'var(--accent)' : 'var(--fill-2)', color: 'var(--surface)', border: 'none', cursor: P ? 'pointer' : 'not-allowed', font: 'inherit', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+        <button onClick={submit} disabled={blocked} style={{ height: 44, padding: '0 24px', borderRadius: 10, background: blocked ? 'var(--fill-2)' : 'var(--accent)', color: 'var(--surface)', border: 'none', cursor: blocked ? 'not-allowed' : 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
           <Icon name="check" size={17} stroke={2} /> ثبت وام
         </button>
       </div>

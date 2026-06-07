@@ -86,31 +86,24 @@ function App() {
       </header>
 
       {/* ---- actions ---- */}
-      <div style={{ marginBottom: 22 }}>
-        <a href="add-member.html" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, width: '100%', boxSizing: 'border-box',
-          borderRadius: 'var(--radius)', background: 'var(--accent)', color: 'var(--surface)', textDecoration: 'none',
-          fontSize: 14.5, fontWeight: 600,
-        }}>
-          <Icon name="userPlus" size={18} stroke={1.8} /> افزودن عضو
-        </a>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
-          <a href="record-payment.html" style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, height: 44, boxSizing: 'border-box',
-            borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--ink)', textDecoration: 'none',
-            fontSize: 14, fontWeight: 600, border: '1px solid var(--hair)',
-          }}>
-            <Icon name="check" size={16} stroke={2} /> ثبت پرداخت
-          </a>
-          <a href="record-loan.html" style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, height: 44, boxSizing: 'border-box',
-            borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--ink)', textDecoration: 'none',
-            fontSize: 14, fontWeight: 600, border: '1px solid var(--hair)',
-          }}>
-            <Icon name="coins" size={16} stroke={1.7} /> ثبت وام
-          </a>
-        </div>
-      </div>
+      {(() => {
+        const base = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, height: 46, boxSizing: 'border-box', borderRadius: 'var(--radius)', textDecoration: 'none', fontSize: 14, fontWeight: 600 };
+        const primary = { ...base, background: 'var(--accent)', color: 'var(--surface)' };
+        const secondary = { ...base, background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--hair)' };
+        const add = <a href="add-member.html" style={primary}><Icon name="userPlus" size={18} stroke={1.8} /> افزودن عضو</a>;
+        const pay = <a href="record-payment.html" style={secondary}><Icon name="check" size={16} stroke={2} /> ثبت پرداخت</a>;
+        const loan = <a href="record-loan.html" style={secondary}><Icon name="coins" size={16} stroke={1.7} /> ثبت وام</a>;
+        return isMobile ? (
+          // mobile: full-width «افزودن عضو», then «ثبت پرداخت» / «ثبت وام» split below
+          <div style={{ marginBottom: 22, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {add}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>{pay}{loan}</div>
+          </div>
+        ) : (
+          // desktop: three equal buttons in one row
+          <div style={{ marginBottom: 22, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>{add}{pay}{loan}</div>
+        );
+      })()}
 
       {/* ---- KPI band ---- */}
       <KpiBand fund={fund}

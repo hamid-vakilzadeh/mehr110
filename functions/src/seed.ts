@@ -11,6 +11,15 @@ import { db } from "./admin";
 import { COL, FUND_DOC } from "./types";
 import { requireAdmin } from "./auth";
 
+function currentJalaliYM(): number {
+  const parts = new Intl.DateTimeFormat("en-US-u-ca-persian", {
+    year: "numeric", month: "numeric", numberingSystem: "latn", timeZone: "Asia/Tehran",
+  }).formatToParts(new Date());
+  const jy = Number(parts.find((p) => p.type === "year")!.value);
+  const jm = Number(parts.find((p) => p.type === "month")!.value);
+  return jy * 12 + (jm - 1);
+}
+
 const PAR = 5780; // minimum member savings per share
 const MEMBERSHIP = 60; // monthly fee — informational
 const DEFAULT_INST = 20; // default installments
@@ -192,6 +201,7 @@ export async function writeSeed(): Promise<{ members: number; loans: number; beh
     membershipFee: MEMBERSHIP,
     defaultInstallments: DEFAULT_INST,
     parValue: PAR,
+    parMonth: currentJalaliYM(),
     loanPerShare: LOAN_PER_SHARE,
     asOf: FieldValue.serverTimestamp(),
     lastReceiptNo,
