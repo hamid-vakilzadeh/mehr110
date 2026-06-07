@@ -53,3 +53,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Claude Code — local project notes/checkpoint (not for the public repo)
+.claude/
