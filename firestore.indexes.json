@@ -1,19 +1,5 @@
 {
-  "indexes": [
-    {
-      "collectionGroup": "loan",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "payments",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "date", "order": "DESCENDING" }
-      ]
-    }
-  ],
+  "comment": "No composite indexes needed — all queries are single-field (loan.status ==, payments/shares orderBy one field), which Firestore indexes automatically.",
+  "indexes": [],
   "fieldOverrides": []
 }

@@ -17,11 +17,10 @@
    (Real admin credentials / service accounts are server-side only and are
    git-ignored — they never appear in the browser.)
    ============================================================ */
-// Stays false until the backend is on the Blaze plan and the Cloud Functions
-// are deployed (Functions require Blaze). Flip to true after `firebase deploy
-// --only functions` succeeds and the DB is seeded — that's the only change
-// needed to go fully live.
-window.FB_LIVE = false;
+// LIVE: backend deployed (Functions on Blaze), Firestore seeded, manager
+// account created with role=admin. The app now talks to the real backend;
+// every interaction goes through a Cloud Function callable.
+window.FB_LIVE = true;
 
 // Project mehr110-62009 web config. A Firebase WEB apiKey is a public client
 // identifier (NOT a secret) — access is governed by Auth + Security Rules +
