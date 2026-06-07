@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>صندوق مهر۱۱۰ — سیستم طراحی</title>
+<link rel="stylesheet" href="tokens.css" />
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<style>
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 48px 40px 96px; }
+  .sec { margin-top: 52px; }
+  .sec > h2 {
+    font-family: var(--serif); font-weight: 600; font-size: 24px; color: var(--ink);
+    margin: 0 0 4px; line-height: 1.4;
+  }
+  .sec > p { margin: 0 0 22px; color: var(--ink-3); font-size: 14px; max-width: 64ch; line-height: 1.8; }
+  .rule { height: 1px; background: var(--hair); border: none; margin: 14px 0 0; }
+  .card { background: var(--surface); border: 1px solid var(--hair); border-radius: var(--radius); padding: 22px; }
+  .grid { display: grid; gap: 14px; }
+  .lbl { font-size: 11px; font-weight: 600; color: var(--ink-3); }
+  .mono-sm { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); direction: ltr; unicode-bidi: embed; }
+  .swatch { height: 60px; border-radius: 10px; border: 1px solid var(--hair); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+  .nm { white-space: nowrap; }
+</style>
+</head>
+<body>
+<script src="api.js"></script>
+<div class="wrap">
+
+  <!-- header -->
+  <header style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px;">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="width:40px;height:40px;border-radius:11px;background:var(--accent);display:grid;place-items:center;">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7"/><path d="M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></svg>
+      </div>
+      <div>
+        <h1 style="margin:0;font-family:var(--serif);font-weight:600;font-size:30px;color:var(--ink);line-height:1.2;">صندوق مهر۱۱۰</h1>
+        <div style="font-size:13.5px;color:var(--ink-3);margin-top:5px;">سیستم طراحی — رنگ، قلم، فاصله و حالت‌های اجزا</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- COLOR -->
+  <section class="sec">
+    <h2>رنگ</h2>
+    <p>رنگ‌های خنثای گرم بدنهٔ صفحه را می‌سازند. <strong>یک</strong> رنگ شاخص فقط برای پول و مقدار کانونی است؛ <strong>یک</strong> هشدار گِلی تنها برای اعضایی که در پرداخت عقب‌اند به‌کار می‌رود — در حالت سیاه‌وسفید هم خوانا می‌ماند و همیشه با یک آیکن همراه است. حداکثر حدود ۱۰٪ هر صفحه برجسته می‌شود.</p>
+
+    <div class="lbl" style="margin-bottom:10px;">پایهٔ خنثی — کاغذ و مرکب</div>
+    <div class="grid" style="grid-template-columns:repeat(7,1fr);">
+      <div><div class="swatch" style="background:var(--paper);"></div><div style="margin-top:7px;"><div style="font-size:12.5px;font-weight:600;color:var(--ink);">کاغذ</div><div class="mono-sm">--paper</div></div></div>
+      <div><div class="swatch" style="background:var(--surface);"></div><div style="margin-top:7px;"><div style="font-size:12.5px;font-weight:600;color:var(--ink);">سطح</div><div class="mono-sm">--surface</div></div></div>
+      <div><div class="swatch" style="background:var(--surface-2);"></div><div style="margin-top:7px;"><div style="font-size:12.5px;font-weight:600;color:var(--ink);">سطح ۲</div><div class="mono-sm">--surface-2</div></div></div>
+      <div><div class="swatch" style="background:var(--hair);"></div><div style="margin-top:7px;"><div style="font-size:12.5px;font-weight:600;color:var(--ink);">خط مو</div><div class="mono-sm">--hair</div></div></div>
+      <div><div class="swatch" style="background:var(--ink-3);"></div><div style="margin-top:7px;"><div style="font-size:12.5px;font-weight:600;color:var(--ink);">مرکب ۳</div><div class="mono-sm">--ink-3</div></div></div>
+      <div><div class="swatch" style="background:var(--ink-2);"></div><div style="margin-top:7px;"><div style="font-size:12.5px;font-weight:600;color:var(--ink);">مرکب ۲</div><div class="mono-sm">--ink-2</div></div></div>
+      <div><div class="swatch" style="background:var(--ink);"></div><div style="margin-top:7px;"><div style="font-size:12.5px;font-weight:600;color:var(--ink);">مرکب</div><div class="mono-sm">--ink</div></div></div>
+    </div>
+
+    <div class="lbl" style="margin:26px 0 10px;">رنگ شاخص (پول / مقدار کانونی) — قابل تعویض</div>
+    <div class="grid" style="grid-template-columns:repeat(4,1fr);">
+      <div><div class="swatch" style="background:oklch(0.46 0.078 158);"></div><div style="margin-top:7px;font-size:12.5px;font-weight:600;color:var(--ink);">سبز جنگلی <span class="mono-sm">· پیش‌فرض</span></div></div>
+      <div><div class="swatch" style="background:oklch(0.535 0.082 78);"></div><div style="margin-top:7px;font-size:12.5px;font-weight:600;color:var(--ink);">برنجی</div></div>
+      <div><div class="swatch" style="background:oklch(0.48 0.072 224);"></div><div style="margin-top:7px;font-size:12.5px;font-weight:600;color:var(--ink);">آبی نفتی</div></div>
+      <div><div class="swatch" style="background:oklch(0.43 0.10 25);"></div><div style="margin-top:7px;font-size:12.5px;font-weight:600;color:var(--ink);">زرشکی</div></div>
+    </div>
+
+    <div class="lbl" style="margin:26px 0 10px;">هشدار اختصاصی + پُرکنندهٔ دادهٔ خنثی</div>
+    <div class="grid" style="grid-template-columns:repeat(4,1fr);">
+      <div><div class="swatch" style="background:var(--warn);"></div><div style="margin-top:7px;font-size:12.5px;font-weight:600;color:var(--ink);">هشدار · گِلی</div><div class="mono-sm">--warn (فقط عقب‌افتاده)</div></div>
+      <div><div class="swatch" style="background:var(--warn-soft);"></div><div style="margin-top:7px;font-size:12.5px;font-weight:600;color:var(--ink);">هشدار ملایم</div><div class="mono-sm">--warn-soft</div></div>
+      <div><div class="swatch" style="background:var(--fill-1);"></div><div style="margin-top:7px;font-size:12.5px;font-weight:600;color:var(--ink);">پُرکننده ۱</div><div class="mono-sm">--fill-1</div></div>
+      <div><div class="swatch" style="background:var(--fill-2);"></div><div style="margin-top:7px;font-size:12.5px;font-weight:600;color:var(--ink);">پُرکننده ۲</div><div class="mono-sm">--fill-2</div></div>
+    </div>
+  </section>
+
+  <!-- TYPE -->
+  <section class="sec">
+    <h2>قلم</h2>
+    <p>یک قلم تیتر باشخصیت (قابل تعویض: امیری، مرکزی، وزیرمتن، گلزار)، یک قلم تن‌خوانِ تمیز برای رابط و داده، و ارقام جدولی برای پول تا ستون‌ها همیشه تراز بمانند.</p>
+    <div class="card">
+      <div style="display:flex; flex-direction:column; gap:22px;">
+        <div style="display:grid;grid-template-columns:160px 1fr;gap:20px;align-items:baseline;">
+          <div class="lbl">تیتر · سرنویس</div>
+          <div>
+            <div style="font-family:var(--serif);font-weight:600;font-size:40px;color:var(--ink);line-height:1.2;">صندوق مهر۱۱۰</div>
+            <div class="mono-sm" style="margin-top:8px;">Amiri · 600 · تیترها، عنوان بخش‌ها، «تا تاریخِ»</div>
+          </div>
+        </div>
+        <hr class="rule" />
+        <div style="display:grid;grid-template-columns:160px 1fr;gap:20px;align-items:baseline;">
+          <div class="lbl">رابط · متن</div>
+          <div>
+            <div style="font-family:var(--sans);font-size:20px;color:var(--ink);">قابل وام‌دهی — آمادهٔ وام‌دهی امروز</div>
+            <div style="font-family:var(--sans);font-size:14px;color:var(--ink-2);margin-top:6px;">Vazirmatn · برچسب‌ها، سلول جدول، متن. پایه ۱۴، فرعی ۱۲–۱۳.</div>
+            <div class="mono-sm" style="margin-top:8px;">400 / 500 / 600</div>
+          </div>
+        </div>
+        <hr class="rule" />
+        <div style="display:grid;grid-template-columns:160px 1fr;gap:20px;align-items:baseline;">
+          <div class="lbl">ارقام · پول</div>
+          <div>
+            <div class="mono" style="font-size:30px;font-weight:600;color:var(--accent);">۳۹٬۱۹۰</div>
+            <div class="mono" style="font-size:15px;color:var(--ink-2);margin-top:6px;">۱٬۹۶۰ · ۲۷٬۶۲۸ · ۶٬۰۰۲ · ۸٬۰۰۰</div>
+            <div class="mono-sm" style="margin-top:8px;">Vazirmatn · ارقام جدولی · جداکنندهٔ هزارگان · بدون صفر اضافی</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SPACING -->
+  <section class="sec">
+    <h2>فاصله و گردیِ گوشه</h2>
+    <p>مقیاس فاصلهٔ ۴ نقطه‌ای و دو شعاع گوشه. به‌جای سایه از خط مو استفاده می‌شود؛ کارت‌ها فقط با یک کادر ۱ پیکسلی <span class="mono-sm">--hair</span> از زمینه جدا می‌شوند.</p>
+    <div class="card">
+      <div style="display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap;">
+        <div style="display:flex;align-items:flex-end;gap:14px;">
+          <div style="text-align:center;"><div style="width:4px;height:4px;background:var(--accent);border-radius:2px;margin:0 auto;"></div><div class="mono-sm" style="margin-top:8px;">۴</div></div>
+          <div style="text-align:center;"><div style="width:8px;height:8px;background:var(--accent);border-radius:2px;margin:0 auto;"></div><div class="mono-sm" style="margin-top:8px;">۸</div></div>
+          <div style="text-align:center;"><div style="width:12px;height:12px;background:var(--accent);border-radius:2px;margin:0 auto;"></div><div class="mono-sm" style="margin-top:8px;">۱۲</div></div>
+          <div style="text-align:center;"><div style="width:16px;height:16px;background:var(--accent);border-radius:3px;margin:0 auto;"></div><div class="mono-sm" style="margin-top:8px;">۱۶</div></div>
+          <div style="text-align:center;"><div style="width:24px;height:24px;background:var(--accent);border-radius:3px;margin:0 auto;"></div><div class="mono-sm" style="margin-top:8px;">۲۴</div></div>
+          <div style="text-align:center;"><div style="width:32px;height:32px;background:var(--accent);border-radius:4px;margin:0 auto;"></div><div class="mono-sm" style="margin-top:8px;">۳۲</div></div>
+          <div style="text-align:center;"><div style="width:48px;height:48px;background:var(--accent);border-radius:5px;margin:0 auto;"></div><div class="mono-sm" style="margin-top:8px;">۴۸</div></div>
+        </div>
+        <div style="flex:1;"></div>
+        <div style="display:flex;gap:16px;">
+          <div style="text-align:center;"><div style="width:64px;height:48px;background:var(--surface-2);border:1px solid var(--hair);border-radius:14px;"></div><div class="mono-sm" style="margin-top:8px;">۱۴ · کارت</div></div>
+          <div style="text-align:center;"><div style="width:64px;height:48px;background:var(--surface-2);border:1px solid var(--hair);border-radius:9px;"></div><div class="mono-sm" style="margin-top:8px;">۹ · کنترل</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPONENTS -->
+  <section class="sec">
+    <h2>اجزا و حالت‌ها</h2>
+    <p>اجزای قابل‌استفادهٔ مجدد و همهٔ حالت‌هایی که داشبورد دارد: پیش‌فرض، شناور، بازشده، حالت هشدار عقب‌افتادگی، و حالت خالی / بدون نتیجه.</p>
+
+    <div class="grid" style="grid-template-columns:1fr 1fr; align-items:start;">
+      <!-- KPI tiles -->
+      <div>
+        <div class="lbl" style="margin-bottom:10px;">کاشی شاخص — پیش‌فرض و هشدار</div>
+        <div style="display:flex; gap:14px;">
+          <div style="flex:1;background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:18px 20px;">
+            <div class="lbl">قابل وام‌دهی</div>
+            <div class="mono" style="font-size:30px;font-weight:600;color:var(--accent);margin-top:8px;line-height:1.1;">۲۷٬۶۲۸</div>
+            <div style="font-size:12.5px;color:var(--ink-3);margin-top:7px;">آمادهٔ وام‌دهی امروز</div>
+          </div>
+          <div style="flex:1;background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:14px;padding:18px 20px;">
+            <div class="lbl" style="color:var(--warn);display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 22 19.5H2L12 3.2Z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="16.7" r="0.6" fill="currentColor" stroke="none"/></svg>نیازمند توجه</div>
+            <div class="mono" style="font-size:30px;font-weight:600;color:var(--warn);margin-top:8px;line-height:1.1;">۵</div>
+            <div style="font-size:12.5px;color:var(--warn);margin-top:7px;font-weight:500;">۵ عضو در پرداخت اقساط عقب‌اند</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- pills + buttons -->
+      <div>
+        <div class="lbl" style="margin-bottom:10px;">وضعیت، نشان‌ها و کنترل‌ها</div>
+        <div class="card" style="padding:18px 20px;display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;gap:20px;align-items:center;">
+            <span class="pill" style="color:var(--ink-2);"><span style="width:7px;height:7px;border-radius:99px;background:var(--accent);opacity:.9;"></span>فعال</span>
+            <span class="pill" style="color:var(--ink-3);"><span style="width:7px;height:7px;border-radius:99px;background:var(--fill-1);opacity:.6;"></span>غیرفعال</span>
+            <span class="pill" style="color:var(--ink-3);border:1px solid var(--hair);border-radius:99px;padding:5px 11px;"><span style="width:6px;height:6px;border-radius:99px;background:var(--fill-1);"></span>فقط خواندنی</span>
+          </div>
+          <div style="display:inline-flex;background:var(--surface-2);border:1px solid var(--hair);border-radius:10px;padding:3px;gap:3px;align-self:flex-start;">
+            <span style="height:30px;padding:0 14px;display:inline-flex;align-items:center;border-radius:7px;font-size:13px;font-weight:600;color:var(--ink);background:var(--surface);box-shadow:0 1px 3px rgba(80,70,50,.1);">اعضا</span>
+            <span style="height:30px;padding:0 14px;display:inline-flex;align-items:center;border-radius:7px;font-size:13px;font-weight:600;color:var(--ink-3);white-space:nowrap;">بر اساس خانواده</span>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--ink-2);margin-bottom:6px;">روند بازپرداخت وام</div>
+            <div style="height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden;"><div style="width:62%;height:100%;background:var(--accent);border-radius:99px;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- table row states -->
+    <div class="lbl" style="margin:26px 0 10px;">ردیف عضو — پیش‌فرض · شناور · عقب‌افتاده (هشدار) · بازشده</div>
+    <div style="background:var(--surface);border:1px solid var(--hair);border-radius:14px;overflow:hidden;font-family:var(--sans);">
+      <!-- default -->
+      <div style="display:grid;grid-template-columns:40px 130px 80px 120px 1fr;align-items:center;padding:13px 16px;border-bottom:1px solid var(--hair-2);">
+        <div style="color:var(--ink-3);">‹</div>
+        <div class="mono" style="font-size:13px;color:var(--ink-2);">۱۳۹۵ بهمن</div>
+        <div class="mono" style="font-size:14px;font-weight:600;color:var(--ink);">۱٬۰۹۰</div>
+        <div style="font-size:13.5px;color:var(--ink-2);">کریمی</div>
+        <div style="display:flex;align-items:center;gap:9px;justify-content:flex-end;"><span class="nm" style="font-size:14px;font-weight:600;color:var(--ink);">رضا کریمی</span></div>
+      </div>
+      <!-- hover -->
+      <div style="display:grid;grid-template-columns:40px 130px 80px 120px 1fr;align-items:center;padding:13px 16px;border-bottom:1px solid var(--hair-2);background:var(--surface-2);">
+        <div style="color:var(--ink-3);">‹</div>
+        <div class="mono" style="font-size:13px;color:var(--ink-2);">۱۳۹۶ آذر</div>
+        <div class="mono" style="font-size:14px;font-weight:600;color:var(--ink);">۱٬۰۲۰</div>
+        <div style="font-size:13.5px;color:var(--ink-2);">صادقی <span class="mono-sm">· شناور</span></div>
+        <div style="display:flex;align-items:center;gap:9px;justify-content:flex-end;"><span class="nm" style="font-size:14px;font-weight:600;color:var(--ink);">مهسا صادقی</span></div>
+      </div>
+      <!-- behind / warning -->
+      <div style="display:grid;grid-template-columns:40px 130px 80px 120px 1fr;align-items:center;padding:13px 16px;border-bottom:1px solid var(--hair-2);box-shadow:inset -3px 0 0 var(--warn);">
+        <div style="color:var(--ink-3);">‹</div>
+        <div class="mono" style="font-size:13px;color:var(--ink-2);">۱۳۹۶ فروردین</div>
+        <div class="mono" style="font-size:14px;font-weight:600;color:var(--ink);">۱٬۰۴۰</div>
+        <div style="font-size:13.5px;color:var(--ink-2);">کاظمی</div>
+        <div style="display:flex;align-items:center;gap:9px;justify-content:flex-end;">
+          <span style="font-size:11.5px;font-weight:600;color:var(--warn);">· ۲ قسط عقب</span>
+          <span class="nm" style="font-size:14px;font-weight:600;color:var(--ink);">لیلا کاظمی</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 22 19.5H2L12 3.2Z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="16.7" r="0.6" fill="var(--warn)" stroke="none"/></svg>
+        </div>
+      </div>
+      <!-- expanded -->
+      <div style="background:var(--surface-2);">
+        <div style="display:grid;grid-template-columns:40px 130px 80px 120px 1fr;align-items:center;padding:13px 16px;">
+          <div style="color:var(--ink-3);transform:rotate(180deg);">‹</div>
+          <div class="mono" style="font-size:13px;color:var(--ink-2);">۱۳۹۶ بهمن</div>
+          <div class="mono" style="font-size:14px;font-weight:600;color:var(--ink);">۹۸۰</div>
+          <div style="font-size:13.5px;color:var(--ink-2);">حسینی</div>
+          <div style="display:flex;align-items:center;gap:9px;justify-content:flex-end;"><span class="nm" style="font-size:14px;font-weight:600;color:var(--ink);">کاوه حسینی</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" stroke-width="1.6"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7"/><path d="M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></svg>
+          </div>
+        </div>
+        <div style="padding:0 38px 18px 16px;display:grid;grid-template-columns:1fr 1.1fr;gap:28px;">
+          <!-- loan (left in RTL) -->
+          <div style="background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:14px 16px;">
+            <div class="lbl" style="margin-bottom:12px;">وام فعال</div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+              <div><div style="font-size:11px;color:var(--ink-3);">اصل وام</div><div class="mono" style="font-size:15px;font-weight:600;color:var(--ink-2);">۸٬۰۰۰</div></div>
+              <div><div style="font-size:11px;color:var(--ink-3);">قسط ماهانه</div><div class="mono" style="font-size:15px;font-weight:600;color:var(--ink-2);">۲۲۲</div></div>
+              <div><div style="font-size:11px;color:var(--ink-3);">مانده</div><div class="mono" style="font-size:15px;font-weight:600;color:var(--ink);">۶٬۰۰۲</div></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2);margin-bottom:6px;"><span>۹ از ۳۶ قسط پرداخت‌شده</span><span class="mono" style="font-weight:600;color:var(--accent);">۲۵٪ بازپرداخت</span></div>
+            <div style="height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden;"><div style="width:25%;height:100%;background:var(--accent);border-radius:99px;"></div></div>
+          </div>
+          <!-- shares (right in RTL) -->
+          <div>
+            <div class="lbl" style="margin-bottom:10px;">سهم · خط مشارکت</div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink);border-top:1px solid var(--hair-2);padding-top:8px;">
+              <span style="font-weight:500;">سهم الف</span><span class="mono" style="color:var(--ink-2);">۱۳۹۶ بهمن</span><span class="mono" style="color:var(--ink-2);">۹۸</span><span class="mono" style="font-weight:500;">۹۸۰</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- empty state -->
+    <div class="lbl" style="margin:26px 0 10px;">خالی / بدون نتیجهٔ جستجو</div>
+    <div style="background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:48px 20px;text-align:center;">
+      <div style="display:inline-flex;flex-direction:column;align-items:center;gap:10px;color:var(--ink-3);">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="16.2" y1="16.2" x2="21" y2="21"/></svg>
+        <div style="font-size:15px;font-weight:600;color:var(--ink-2);">عضوی با جستجوی شما مطابقت ندارد</div>
+        <div style="font-size:13px;">نام دیگری را امتحان کنید یا فیلترها را پاک کنید.</div>
+        <div style="margin-top:4px;height:34px;padding:0 14px;display:inline-flex;align-items:center;border:1px solid var(--hair);border-radius:8px;font-size:13px;font-weight:500;color:var(--ink);">پاک کردن همه</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FIREBASE DATA MODEL -->
+  <section class="sec">
+    <h2>مدل دادهٔ فایربیس</h2>
+    <p>ساختار پیشنهادی برای <span class="mono-sm">Cloud Firestore</span>. داشبورد و صورت‌حساب فقط‌خواندنی‌اند؛ تنها فرم «افزودن عضو» در مجموعهٔ <span class="mono-sm">members</span> می‌نویسد. مبالغ به‌صورت عدد صحیح (تومان) ذخیره می‌شوند و قالب‌بندی فارسی هنگام نمایش اعمال می‌گردد.</p>
+    <div class="card" style="direction:ltr;text-align:left;">
+<pre class="mono" style="margin:0;font-size:12.5px;line-height:1.85;color:var(--ink-2);white-space:pre-wrap;">members/{memberId}
+  firstName: string          // required
+  lastName:  string          // required
+  family:    string
+  dob:       timestamp | null
+  phones:    string[]        // 0..n  — repeatable
+  accounts:  string[]        // 0..n  — repeatable
+  referredBy: memberId | null // معرف — who introduced them
+  status:    "active" | "inactive"
+  loanReceived: boolean      // received a loan THIS round
+  loanPos:   number          // position in the loan order
+  behind:    boolean
+  missed:    number
+  createdAt: serverTimestamp
+
+  shares/{shareId}           // sub-collection — one doc per share line
+    label:     string        // "سهم الف" …
+    since:     timestamp
+    balance:   number        // AUTHORITATIVE stored value (Rials) — never
+                             // recomputed from the fee. Incremented when a
+                             // payment is recorded; survives fee changes.
+    funding:   boolean       // true while still funding up to par
+    // funded      = balance >= fund/config.parValue   → loan-eligible
+    // fundedPct   = balance / parValue                → drives the progress bar
+
+  loan/{loanId}              // 0..1 active loan (only on a FUNDED share)
+    principal:        number
+    term:             number // months
+    installmentsPaid: number
+    monthly:          number
+    outstanding:      number
+
+  payments/{paymentId}       // ledger — every membership fee / installment
+    type:    "membership" | "installment"
+    shareId: string | null   // installment target
+    amount:  number
+    date:    timestamp
+    // recording a payment does: shares/{id}.balance += amount
+
+fund/config                  // single settings doc — INFORMATIONAL only
+  membershipFee:       60    // monthly fee (drives no balance math)
+  defaultInstallments: 20    // default installments for a new share
+  parValue:            5780   // current full-funded value of a share
+  // parValue rises by membershipFee each cycle (next month → 5840)
+  asOf:                timestamp
+
+fund/loanRotation            // round-based loan order (admin-managed)
+  round:  number             // current round number
+  order:  memberId[]         // the loan queue — drag to reorder
+  // members keep their place; loanReceived flags them. Next-up = first
+  // member in order with loanReceived == false. When all have received,
+  // round++ and every loanReceived resets to false.</pre>
+    </div>
+    <p style="margin-top:14px;">
+      موجودی هر سهم یک عدد <strong>ذخیره‌شدهٔ معتبر</strong> است که فقط هنگام ثبت پرداخت بالا می‌رود —
+      هرگز از روی حق عضویت محاسبه نمی‌شود، پس با تغییر حق عضویت دستکاری نمی‌شود. یک سهم تا وقتی به ارزش کامل
+      (<span class="mono-sm">parValue</span>) تأمین نشود، واجد شرایط وام نیست. دسترسی اعضا به صورت‌حساب خودشان با
+      <span class="mono-sm">Security Rules</span> به <span class="mono-sm">request.auth.uid == memberId</span> محدود می‌شود.
+    </p>
+  </section>
+
+</div>
+</body>
+</html>

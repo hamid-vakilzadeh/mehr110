@@ -1,0 +1,55 @@
+# ============================================================
+#  SECURITY — this repository is PUBLIC.
+#  Never commit credentials, service accounts, or env secrets.
+# ============================================================
+
+# Firebase service-account / admin credentials (NEVER commit)
+**/serviceAccount*.json
+**/service-account*.json
+**/*serviceaccountkey*.json
+**/*-firebase-adminsdk-*.json
+**/firebase-adminsdk*.json
+google-credentials.json
+gcloud-credentials.json
+*.pem
+*.key
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+.runtimeconfig.json
+secrets/
+**/.secret*
+
+# Firebase local artifacts
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+pubsub-debug.log
+*-debug.log
+.firebaserc.local
+emulator-data/
+emulators-export/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json.bak
+
+# TypeScript build output
+functions/lib/
+functions/.tsbuildinfo
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

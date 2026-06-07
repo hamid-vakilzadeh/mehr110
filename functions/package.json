@@ -1,0 +1,25 @@
+{
+  "name": "mehr110-functions",
+  "version": "1.0.0",
+  "description": "Backend API (Cloud Functions) for صندوق مهر۱۱۰ — a family ROSCA fund manager. Every interaction goes through a callable; the browser never writes Firestore directly.",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions,firestore,auth,hosting",
+    "shell": "npm run build && firebase functions:shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "private": true
+}

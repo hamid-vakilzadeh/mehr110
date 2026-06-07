@@ -1,0 +1,89 @@
+/* ============================================================
+   THE FAMILY FUND — design tokens
+   Warm "family ledger / private bank" system.
+   Neutrals carry the screen; ONE accent for money; ONE warning hue.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&family=Amiri:wght@400;700&family=Markazi+Text:wght@400;500;600;700&family=Gulzar&display=swap');
+
+:root {
+  /* ---- Warm neutral base (paper & ink) ---- */
+  --paper:        oklch(0.984 0.006 75);   /* page background — warm off-white */
+  --surface:      oklch(0.996 0.004 85);   /* cards / table — near white, warm */
+  --surface-2:    oklch(0.972 0.007 75);   /* recessed wells, expanded rows */
+  --ink:          oklch(0.255 0.012 65);   /* primary text — warm near-black */
+  --ink-2:        oklch(0.435 0.012 65);   /* secondary text */
+  --ink-3:        oklch(0.595 0.011 68);   /* tertiary / labels */
+  --hair:         oklch(0.905 0.006 72);   /* hairlines / borders */
+  --hair-2:       oklch(0.935 0.005 75);   /* lighter hairline */
+
+  /* ---- Accent (MONEY / focal value) — overridden live by Tweaks ---- */
+  --accent:       oklch(0.46 0.078 158);   /* default: deep evergreen */
+  --accent-soft:  color-mix(in oklab, var(--accent) 9%, transparent);
+  --accent-line:  color-mix(in oklab, var(--accent) 30%, transparent);
+
+  /* ---- Warning (reserved — ONLY for members behind) ---- */
+  --warn:         oklch(0.555 0.135 47);   /* terracotta — legible in greyscale */
+  --warn-soft:    oklch(0.555 0.135 47 / 0.10);
+  --warn-line:    oklch(0.555 0.135 47 / 0.30);
+
+  /* ---- Neutral data fill (charts that aren't "money") ---- */
+  --fill-1:       oklch(0.72 0.018 70);    /* mid warm grey */
+  --fill-2:       oklch(0.86 0.012 72);    /* light warm grey */
+
+  /* ---- Type (Persian) ---- */
+  --serif:  'Vazirmatn', system-ui, sans-serif;       /* headline — swapped live */
+  --sans:   'Vazirmatn', system-ui, sans-serif;
+  --mono:   'Vazirmatn', system-ui, sans-serif;        /* Persian digits, tabular */
+
+  /* ---- Spacing scale (4pt) ---- */
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+  --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+
+  --shadow: 0 1px 2px oklch(0.4 0.02 70 / 0.04), 0 4px 16px oklch(0.4 0.02 70 / 0.05);
+}
+
+* { box-sizing: border-box; }
+
+html { direction: rtl; }
+
+/* Persian script: letter-spacing breaks glyph joining — neutralise everywhere */
+body * { letter-spacing: normal !important; }
+
+html, body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* tabular figures everywhere numbers appear */
+.tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.serif { font-family: var(--serif); }
+
+/* utility */
+.u-row { display: flex; align-items: center; }
+.u-muted { color: var(--ink-3); }
+
+::selection { background: var(--accent-soft); }
+
+/* focus ring */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* thin custom scrollbars in scroll regions */
+.scroll-y { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--hair) transparent; }

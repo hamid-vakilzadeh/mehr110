@@ -1,0 +1,9 @@
+node_modules/
+lib/
+*.tsbuildinfo
+.runtimeconfig.json
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+.env
+.env.*
+!.env.example

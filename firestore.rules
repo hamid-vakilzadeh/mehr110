@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// ============================================================
+//  صندوق مهر۱۱۰ — Firestore Security Rules
+//
+//  HARD RULE: the browser NEVER writes Firestore directly.
+//  Every write goes through a Cloud Function using the Admin SDK
+//  (which bypasses these rules). Therefore: deny ALL client writes.
+//
+//  Reads:
+//   • Admin (custom claim role=admin) may read everything.
+//   • A member may read ONLY their own member doc + sub-collections
+//     (request.auth.uid == memberId) — for the member-facing statement.
+//   • fund/config is readable by any signed-in user (the UI needs par
+//     value / fee labels). fund/loanRotation is admin-only.
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role == 'admin';
+    }
+
+    // ---- members + everything under a member ----
+    match /members/{memberId} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == memberId);
+      allow write: if false; // Functions (Admin SDK) only
+
+      match /{sub=**} {
+        allow read: if isAdmin() || (isSignedIn() && request.auth.uid == memberId);
+        allow write: if false;
+      }
+    }
+
+    // ---- fund settings + loan rotation ----
+    match /fund/{doc} {
+      // config: any signed-in user may read (par/fee labels for the UI)
+      // loanRotation: admin only
+      allow read: if doc == 'config' ? isSignedIn() : isAdmin();
+      allow write: if false; // Functions only
+    }
+
+    // ---- everything else: locked down ----
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

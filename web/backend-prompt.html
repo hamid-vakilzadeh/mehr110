@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>صندوق مهر۱۱۰ — راهنمای بک‌اند برای Claude Code</title>
+<link rel="stylesheet" href="tokens.css" />
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<style>
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 28px 80px; }
+  .head { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  .logo { width: 44px; height: 44px; border-radius: 12px; background: var(--accent); display: grid; place-items: center; flex: none; }
+  h1 { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 26px; color: var(--ink); line-height: 1.3; }
+  .sub { margin: 4px 0 24px; font-size: 14px; color: var(--ink-3); line-height: 1.8; }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .bar h2 { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink-2); }
+  .copy { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 18px; border-radius: 10px;
+    background: var(--accent); color: var(--surface); border: none; cursor: pointer; font-family: var(--sans);
+    font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .copy:hover { opacity: 0.93; }
+  .copy.ok { background: var(--ink); }
+  textarea {
+    width: 100%; height: 540px; resize: vertical; box-sizing: border-box;
+    border: 1px solid var(--hair); border-radius: var(--radius); background: var(--surface-2);
+    padding: 18px 20px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: var(--ink);
+    direction: ltr; text-align: left; white-space: pre; overflow: auto; tab-size: 2;
+  }
+  textarea:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .note { margin-top: 14px; font-size: 12.5px; color: var(--ink-3); line-height: 1.8; }
+  .note b { color: var(--ink-2); font-weight: 600; }
+</style>
+</head>
+<body>
+<script src="api.js"></script>
+<div class="wrap">
+  <div class="head">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7"/><path d="M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></svg>
+    </div>
+    <h1>راهنمای ساخت بک‌اند — برای Claude Code</h1>
+  </div>
+  <p class="sub">
+    این متن، شرح کامل بک‌اندِ «صندوق مهر۱۱۰» است: همه‌چیز روی <b>Firebase</b> میزبانی می‌شود (وب + بک‌اند)، و
+    <b>تمام تعامل‌ها فقط از طریق API</b> انجام می‌شوند. متن داخل کادر را کپی کنید و به Claude Code بدهید.
+  </p>
+
+  <div class="bar">
+    <h2>پرامپت (انگلیسی — برای ایجنت)</h2>
+    <button class="copy" id="copyBtn" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      <span id="copyLbl">کپی پرامپت</span>
+    </button>
+  </div>
+
+  <textarea id="prompt" readonly spellcheck="false">You are building the BACKEND for an existing web app called «صندوق مهر۱۱۰» (Sandogh Mehr-110) — a family ROSCA (rotating savings-and-loan circle / "committee"). One non-technical manager runs it for ~50 members across ~12 families. The frontend already exists (static HTML + React-via-Babel, right-to-left Farsi, currency تومان/Toman, Persian/Jalali calendar dates, Persian digits). Pages: index.html (login), dashboard.html, statement.html, add-member.html (also serves edit via ?edit=ID), record-payment.html, loan-order.html, plus a mobile gallery and a design-system page.
+
+Today the UI reads ONE global object `window.FUND` from a mock file `data.js`. Your job: replace that mock with a real backend and route EVERY interaction through an API.
+
+==================================================
+HOSTING — EVERYTHING IS ON FIREBASE (web + backend)
+==================================================
+- Firebase Hosting: serve the existing web app.
+- Cloud Functions (2nd gen, Node 20, TypeScript): the API layer. Use httpsCallable functions (preferred) or onRequest HTTPS endpoints that verify auth.
+- Cloud Firestore: the database.
+- Firebase Auth: manager (admin) login. Replace the demo localStorage gate in auth.js with real Firebase Auth (onAuthStateChanged); index.html should sign in via signInWithEmailAndPassword.
+- Optional: Cloud Scheduler + a scheduled Function to advance the period (see parValue below).
+
+HARD RULE: the browser NEVER writes to Firestore directly. The client calls Cloud Functions only; Functions do all reads/writes (Admin SDK) and recompute derived fields. Firestore Security Rules deny all client writes.
+
+==================================================
+HARD REQUIREMENT — ALL INTERACTIONS THROUGH API
+==================================================
+Implement these callable functions. Each verifies context.auth and the caller's role on every call. Nothing mutates Firestore from the browser.
+
+Auth
+- (client uses Firebase Auth SDK; server checks context.auth + custom claim role=admin)
+
+Members
+- members.list            -> all members (with derived fields)
+- members.get   {id}      -> one member (+ shares, loan, receipts)
+- members.create {firstName,lastName,family,dob?,phones[],accounts[],referredBy?,status,initialShares}
+- members.update {id, ...editable fields}
+- members.delete {id}     -> removes member + their shares/payments/loan; removes from loanOrder
+
+Shares
+- shares.add    {memberId, label?}            -> opens a new share with balance=0 (under-funded => not loan-eligible)
+- shares.get    {memberId}
+
+Payments (the ONLY way balances change)
+- payments.recordSeed        {memberId, shareId, amount, date} -> share.balance += amount (integer); recompute funded/eligibility; create a receipt
+- payments.recordInstallment {memberId, loanId, amount, date}  -> loan.outstanding = max(0, outstanding-amount); recompute pct; close loan if 0; create a receipt
+- payments.list              {memberId}                         -> {seed:[...], installments:[...]}
+
+Loans
+- loans.issue   {memberId, principal, termMonths}  -> ONLY if member is loan-eligible AND available >= principal; else reject
+- loans.get     {memberId}
+
+Loan rotation (round-based order of who gets a loan)
+- loanOrder.get            -> {round, order:[memberId...], receivedMap}
+- loanOrder.reorder        {order:[memberId...]}   -> sets the order (positions); does NOT change received status
+- loanOrder.markReceived   {memberId, received:boolean}
+- loanOrder.startNewRound  -> round++ and reset every loanReceived=false
+
+Settings (informational — see below)
+- settings.get
+- settings.update {membershipFee?, defaultInstallments?, parValue?}
+
+Aggregates
+- aggregates.dashboard -> returns the full dashboard payload (KPIs + chart data + lists), shaped like the current window.FUND so the UI keeps working (see "Frontend integration").
+
+==================================================
+MONEY & DATES
+==================================================
+- Store ALL money as INTEGER Toman (تومان). No decimals, no floats anywhere. Never use floating-point arithmetic for money.
+- Store dates as Firestore Timestamps (UTC). Convert to Jalali + Persian digits on the CLIENT only.
+
+==================================================
+FIRESTORE DATA MODEL
+==================================================
+members/{memberId}
+  firstName: string            // required
+  lastName:  string            // required
+  family:    string
+  dob:       Timestamp | null
+  phones:    string[]          // 0..n (repeatable)
+  accounts:  string[]          // 0..n (repeatable)
+  referredBy: memberId | null  // معرف — who introduced them
+  status:    "active" | "inactive"
+  behind:    boolean           // has an under-funded share due to missed payments (DERIVED, stored for query)
+  missed:    number            // count of missed membership payments
+  loanReceived: boolean        // received a loan in the CURRENT round
+  loanPos:   number            // position in the loan order (mirror of loanRotation.order index)
+  createdAt: Timestamp
+
+members/{memberId}/shares/{shareId}
+  label:     string            // "سهم الف", "سهم ب", ...
+  openedAt:  Timestamp
+  balance:   number            // *** AUTHORITATIVE *** integer Toman actually paid into this share.
+                               // NEVER recomputed from the fee or month count. Changes ONLY via
+                               // payments.recordSeed (balance += amount) or an explicit admin adjustment.
+  // funded / fundedPct / loanEligible are DERIVED (see below), not stored as source of truth.
+
+members/{memberId}/loan/{loanId}     // 0..1 active loan
+  principal:        number
+  termMonths:       number
+  monthly:          number     // = round(principal / termMonths)  (display convenience)
+  outstanding:      number     // *** AUTHORITATIVE *** principal minus installments paid; decremented per installment
+  status:           "active" | "repaid"
+  issuedAt:         Timestamp
+
+members/{memberId}/payments/{paymentId}     // ledger of receipts
+  type:    "seed" | "installment"
+  shareId: string | null       // for seed payments
+  loanId:  string | null       // for installment payments
+  no:      string              // human receipt number
+  amount:  number
+  date:    Timestamp
+
+fund/config                    // single settings doc — INFORMATIONAL only
+  name:                "صندوق مهر۱۱۰"
+  currency:            "تومان"
+  membershipFee:       60      // expected monthly fee (drives NO balance math)
+  defaultInstallments: 20      // default # of installments for a new share (UI default only)
+  parValue:            5780    // current full-funded value of a share THIS period
+  asOf:                Timestamp
+
+fund/loanRotation              // round-based loan order (admin-managed)
+  round:  number
+  order:  memberId[]           // the loan queue — drag to reorder
+
+==================================================
+AUTHORITATIVE vs DERIVED  (THE MOST IMPORTANT PART)
+==================================================
+* share.balance is AUTHORITATIVE: a stored integer = the running total of seed money actually paid into that share. It is NEVER recomputed from membershipFee or elapsed months. It changes ONLY when a payment is recorded (balance += amount) or via an explicit admin adjustment. This guarantees that changing membershipFee or parValue NEVER corrupts historical balances.
+
+* parValue is the current full-funded value of a share (today 5780). It rises by membershipFee each period (next period 5840). Advance it with settings.update or a scheduled Function — this changes who is "funded" going forward, but touches NO stored balance.
+
+* membershipFee (60) and defaultInstallments (20) are INFORMATIONAL: defaults/labels and the expected monthly amount. They drive NO balance math. Balances move ONLY through recorded payments.
+
+Recompute these DERIVED fields server-side on every read/aggregate (never trust the client):
+
+Per share:
+  funded       = balance >= parValue
+  fundedPct    = min(100, round(balance / parValue * 100))
+  loanEligible = funded
+
+Per member:
+  seedBalance  = sum(share.balance for the member's shares)     // authoritative sum
+  nShares      = count(shares)
+  fundedShares = count(shares where funded)
+  loanEligible = fundedShares >= 1        // member is eligible if AT LEAST ONE share is fully funded to par
+  fundedPct    = min(100, round(seedBalance / (nShares * parValue) * 100))   // blended funding %
+  behind       = (any share has balance < parValue from missed payments); missed = # missed payments
+  // NOTE: an under-funded share is itself NOT loan-eligible, but the MEMBER can still be loan-eligible via another fully-funded share.
+
+Fund aggregates (dashboard):
+  totalPool      = sum(member.seedBalance) over ALL members
+  outstanding    = sum(loan.outstanding) over active loans
+  available      = totalPool - outstanding       // free to lend right now (the key decision number)
+  activeLoans    = count(active loans)
+  needsAttention = count(members where behind)
+  loanEligible   = count(active members where loanEligible)
+  memberCount, familiesCount, totalShares
+
+By family:
+  family.balance   = sum(member.seedBalance in family)
+  family.shares    = sum(member.nShares in family)
+  family.fundedPct = min(100, round(family.balance / (family.shares * parValue) * 100))
+
+Loan:
+  outstanding = principal - sum(installment payments)   // authoritative, decremented per installment
+  pct (repaid) = round((principal - outstanding) / principal * 100)
+
+Loan rotation:
+  next-up   = FIRST member in fund/loanRotation.order whose loanReceived == false
+  received members KEEP their order position (never moved to the bottom); they are only flagged.
+
+==================================================
+BUSINESS RULES / INVARIANTS (ENFORCE SERVER-SIDE)
+==================================================
+1. loans.issue may grant a loan ONLY to a loan-eligible member (>=1 share funded to par) AND only if available >= principal. Reject otherwise with a clear error.
+2. payments.recordSeed: target share.balance += amount (integer). Recompute funded/loanEligible. If the share crosses parValue it becomes funded and (for the member) loan-eligible.
+3. payments.recordInstallment: loan.outstanding = max(0, outstanding - amount); recompute pct; if outstanding == 0 set loan.status="repaid".
+4. Loan rotation is round-based: next-up = first member in order with loanReceived=false. Members keep their position when they receive (DO NOT sort received members to the bottom). When EVERY active member has loanReceived=true, startNewRound sets round++ and resets all loanReceived=false. Reordering changes only `order`.
+5. members.delete removes the member + their shares/payments/loan and removes them from loanRotation.order.
+6. Changing membershipFee or parValue must NEVER recompute a stored balance — they only affect funded/eligibility going forward (because funded compares the stored balance to the CURRENT parValue).
+7. All amounts are integers; reject non-integer or negative amounts.
+
+==================================================
+SECURITY RULES
+==================================================
+- Firestore: deny ALL client writes (every write goes through a Function using the Admin SDK).
+- Manager = admin via custom claim role=admin; all admin callables require it.
+- Optional member-facing statement: a member may READ only their own member doc and sub-collections (request.auth.uid == memberId). Everything else admin-only.
+- Every callable verifies context.auth and role before doing anything.
+
+==================================================
+FRONTEND INTEGRATION (keep the UI working)
+==================================================
+- The UI expects a window.FUND-shaped object: { meta, settings, members[], families[], kpis{}, loanOrder[], loanNext, loanRound, loanReceivedCount, loanTotal, queue[], purchasing[], purchaseAgg{}, growth[], derived{} }. Have aggregates.dashboard return exactly this shape (with all DERIVED fields computed), OR refactor data.js into an api.js that fetches from the callables and assembles the same object. Keep field names identical (seedBalance, fundedPct, loanEligible, funded, balance, nShares, behind, missed, referredBy, seedReceipts, installmentReceipts, loanPos, loanReceived, etc.) so the existing pages render unchanged.
+- "purchasing"/"pendingShare" in the current mock is just a DERIVED view of under-funded shares (balance < parValue). There is NO separate installment-plan entity — do not model one. A share is either funded (>=par) or still funding (<par).
+- Replace auth.js: guard via onAuthStateChanged; index.html signs in with Firebase Auth; dashboard's «خروج» calls signOut().
+- Every mutating UI action calls its callable: add/edit/delete member, record seed payment, record loan installment, issue loan, reorder loan list, mark received, start new round, edit settings. No direct Firestore writes from the browser.
+
+==================================================
+DELIVERABLES
+==================================================
+- firebase.json, .firebaserc, firestore.rules, firestore.indexes.json
+- functions/ (TypeScript): all callables above + shared recompute/validation helpers + a money helper (integers only)
+- A seed script that imports a starter dataset (~50 members, ~12 families, a few under-funded "behind" members, 5 active loans on ELIGIBLE members only, a round-based loanRotation)
+- api.js: a thin client wrapper the pages import instead of data.js (exposes the same window.FUND shape + mutation helpers)
+- README with setup, emulator, and deploy steps (firebase deploy)
+
+Build with the Firebase Emulator Suite first (Auth + Firestore + Functions + Hosting), include seed data, and verify all invariants above with a small test before deploying.</textarea>
+
+  <div class="note">
+    <b>نکته:</b> این پرامپت انگلیسی نوشته شده تا برای ایجنت برنامه‌نویس دقیق و بی‌ابهام باشد — همهٔ روابطِ فیلدهای محاسباتی، قوانین تجاری، و الزام «همه‌چیز از طریق API روی Firebase» در آن آمده است.
+  </div>
+</div>
+
+<script>
+  var btn = document.getElementById('copyBtn');
+  var lbl = document.getElementById('copyLbl');
+  var ta = document.getElementById('prompt');
+  btn.addEventListener('click', function () {
+    function done() {
+      btn.classList.add('ok'); lbl.textContent = 'کپی شد ✓';
+      setTimeout(function () { btn.classList.remove('ok'); lbl.textContent = 'کپی پرامپت'; }, 1800);
+    }
+    function fallback() {
+      ta.removeAttribute('readonly'); ta.focus(); ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      ta.setAttribute('readonly', '');
+      if (window.getSelection) window.getSelection().removeAllRanges();
+      done();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(ta.value).then(done).catch(fallback);
+    } else { fallback(); }
+  });
+</script>
+</body>
+</html>
