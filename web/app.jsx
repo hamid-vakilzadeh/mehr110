@@ -105,26 +105,27 @@ function App() {
         );
       })()}
 
-      {/* ---- KPI band ---- */}
-      <KpiBand fund={fund}
-        onAttention={() => { setView('members'); window.dispatchEvent(new Event('focus-behind')); setTimeout(scrollToMembers, 60); }}
-        onMembers={() => { setView('members'); setTimeout(scrollToMembers, 60); }} />
+      {/* ---- attention alert (only when something needs attention) ---- */}
+      <AttentionCard fund={fund}
+        onAttention={() => { setView('members'); window.dispatchEvent(new Event('focus-behind')); setTimeout(scrollToMembers, 60); }} />
 
-      {/* ---- at a glance ---- */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '36px 0 16px' }}>
+      {/* ---- at a glance (starting section) ---- */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '0 0 16px' }}>
         <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)', lineHeight: 1.3, whiteSpace: 'nowrap' }}>صندوق در یک نگاه</h2>
         <span style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
       </div>
       <div style={{
         display: 'grid', gap: 14,
-        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 0.92fr',
-        gridTemplateAreas: isMobile ? `"comp" "fam" "queue"` : `"comp fam queue"`,
+        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
         alignItems: 'start',
       }}>
-        <div style={{ gridArea: 'comp' }}><Composition fund={fund} /></div>
-        <div style={{ gridArea: 'fam' }}><FamilyBars fund={fund} /></div>
-        <div style={{ gridArea: 'queue' }}><RotationQueue fund={fund} /></div>
+        <Composition fund={fund} />
+        <RotationQueue fund={fund} />
       </div>
+
+      {/* ---- three stat cards, one row, below the chart ---- */}
+      <StatRow fund={fund}
+        onMembers={() => { setView('members'); setTimeout(scrollToMembers, 60); }} />
 
       {/* ---- share purchase tracker ---- */}
       <PurchaseTracker fund={fund} isMobile={isMobile} />

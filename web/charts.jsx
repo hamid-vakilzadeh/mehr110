@@ -45,27 +45,6 @@ function Composition({ fund }) {
   );
 }
 
-/* ---------- ۳. موجودی به تفکیک خانواده — نوار افقی، نزولی ---------- */
-function FamilyBars({ fund }) {
-  const fams = fund.families;
-  const max = fund.derived.topFamilyMax || 1; // avoid /0 -> NaN when empty
-  return (
-    <Panel title={<>سه خانوادهٔ نخست <strong style={{ fontWeight: 700 }}>{faPct(fund.derived.top3Pct)}٪</strong> از سرمایه را در اختیار دارند.</>}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-        {fams.map((f, i) => (
-          <div key={f.family} style={{ display: 'grid', gridTemplateColumns: '92px 1fr 64px', alignItems: 'center', gap: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.family}</div>
-            <div style={{ height: 14, background: 'var(--surface-2)', borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{ width: `${(f.balance / max) * 100}%`, height: '100%', background: i < 3 ? 'var(--fill-1)' : 'var(--fill-2)', borderRadius: 4 }} />
-            </div>
-            <div className="mono" style={{ fontSize: 12.5, color: 'var(--ink-2)', textAlign: 'left' }}>{fmt(f.balance)}</div>
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
 /* ---------- ۴. ترتیب وام — فهرست مرتب، «نفر بعدی» برجسته، پیوند به مدیریت ترتیب ---------- */
 function RotationQueue({ fund }) {
   const order = fund.loanOrder;
@@ -119,4 +98,4 @@ function RotationQueue({ fund }) {
   );
 }
 
-Object.assign(window, { Panel, Composition, FamilyBars, RotationQueue });
+Object.assign(window, { Panel, Composition, RotationQueue });
