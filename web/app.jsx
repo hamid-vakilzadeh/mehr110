@@ -61,9 +61,7 @@ function App() {
       {/* ---- quiet header ---- */}
       <header style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'flex-end', justifyContent: 'space-between', gap: 16, marginBottom: isMobile ? 18 : 28, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 11, background: 'var(--accent)', display: 'grid', placeItems: 'center', flex: 'none' }}>
-            <Icon name="coins" size={21} stroke={1.6} style={{ color: 'var(--surface)' }} />
-          </div>
+          <img src="logo.png" alt="صندوق مهر۱۱۰" width={40} height={40} style={{ borderRadius: 11, display: 'block', flex: 'none' }} />
           <div>
             <h1 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 30, color: 'var(--ink)', lineHeight: 1.15, whiteSpace: 'nowrap' }}>صندوق مهر۱۱۰</h1>
             <div style={{ fontSize: 13.5, color: 'var(--ink-3)', marginTop: 5 }}>حلقهٔ پس‌انداز و وام خانوادگی</div>
