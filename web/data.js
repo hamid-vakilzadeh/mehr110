@@ -5,6 +5,9 @@
    Exposes window.FUND (same shape the live api.js assembles).
    ============================================================ */
 (function () {
+  // In LIVE mode the app reads real data from the backend — never generate the
+  // demo dataset (so it can't leak to anyone or be used as a fallback).
+  if (window.FB_LIVE) return;
   function mulberry32(a) {
     return function () {
       a |= 0; a = (a + 0x6D2B79F5) | 0;

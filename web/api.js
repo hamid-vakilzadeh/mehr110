@@ -143,24 +143,36 @@
 
   async function loadFund() {
     if (!LIVE) return window.FUND; // demo: data.js already set it
-    try {
-      var payload = await call("dashboard");
-      window.FUND = assembleFund(payload);
-    } catch (e) {
-      console.error("loadFund failed, falling back to demo data:", e);
-      // window.FUND may already be the data.js fallback
-    }
+    // NO demo fallback in live mode — the caller (boot) handles failures by
+    // sending the user to login, so non-admins never see the demo dataset.
+    var payload = await call("dashboard");
+    window.FUND = assembleFund(payload);
     return window.FUND;
   }
 
-  // ---------- boot: wait for auth (live) + data, then render ----------
+  async function isAdmin(user) {
+    if (!user) return false;
+    try { var t = await user.getIdTokenResult(); return !!t.claims && t.claims.role === "admin"; }
+    catch (e) { return false; }
+  }
+
+  // ---------- boot: wait for auth (live) + admin gate + data, then render ----------
   async function boot(render) {
     if (LIVE) {
       var user = await authReady;
       var embedded = false;
       try { embedded = window.top !== window.self; } catch (e) { embedded = true; }
-      if (!user && !embedded) return; // auth.js is redirecting to login
-      await loadFund();
+      if (!embedded) {
+        if (!user) return; // auth.js is redirecting to login
+        // ADMIN-ONLY: bounce any signed-in non-admin back to login (no demo, no data)
+        if (!(await isAdmin(user))) { await signOut(); return; }
+      }
+      try {
+        await loadFund();
+      } catch (e) {
+        console.error("dashboard load failed:", e);
+        if (!embedded) { location.replace("index.html"); return; } // never render demo in live
+      }
     }
     render();
   }
@@ -170,7 +182,14 @@
     if (!LIVE) { try { localStorage.setItem("ff_auth", JSON.stringify({ name: email, at: Date.now() })); } catch (e) {} return { ok: true, demo: true }; }
     await authReady.catch(function () {});
     if (!fb.auth) await initFirebase();
-    await fb.auth.signInWithEmailAndPassword(email, password);
+    var cred = await fb.auth.signInWithEmailAndPassword(email, password);
+    // only the manager (role=admin) may use the app
+    if (!(await isAdmin(cred.user))) {
+      try { await fb.auth.signOut(); } catch (e) {}
+      var err = new Error("not-admin");
+      err.code = "not-admin";
+      throw err;
+    }
     return { ok: true };
   }
   async function signOut() {

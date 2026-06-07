@@ -130,7 +130,9 @@
     window.API.signIn(u, p).then(function () {
       location.replace('dashboard.html');
     }).catch(function (ex) {
-      if (errMsg) errMsg.textContent = 'ورود ناموفق بود. ایمیل و گذرواژه را بررسی کنید.';
+      if (errMsg) errMsg.textContent = (ex && ex.code === 'not-admin')
+        ? 'دسترسی فقط برای مدیر صندوق مجاز است.'
+        : 'ورود ناموفق بود. ایمیل و گذرواژه را بررسی کنید.';
       err.classList.add('show');
       console.error(ex);
     });
