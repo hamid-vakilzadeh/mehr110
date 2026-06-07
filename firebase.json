@@ -3,7 +3,7 @@
     "public": "web",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "**/screenshots/**"],
     "rewrites": [],
-    "cleanUrls": true,
+    "cleanUrls": false,
     "headers": [
       {
         "source": "**/*.@(jsx|js|css)",
