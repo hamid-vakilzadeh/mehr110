@@ -153,40 +153,39 @@ function Statement() {
           <div style={{ width: 1, background: 'var(--hair)' }} />
           <div><div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>تأمین</div><div className="mono" style={{ fontSize: 17, fontWeight: 600, color: m.fundedPct >= 100 ? 'var(--accent)' : 'var(--ink)', marginTop: 2 }}>{faPct(m.fundedPct)}٪</div></div>
           <div style={{ width: 1, background: 'var(--hair)' }} />
-          <div><div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>حق عضویت ماهانه</div><div className="mono" style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>{fmt(fund.settings.membershipFee)}</div></div>
+          <div><div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>سقف وام</div><div className="mono" style={{ fontSize: 17, fontWeight: 600, color: 'var(--accent)', marginTop: 2 }}>{fmt(m.maxLoan)}</div></div>
         </div>
       </div>
 
-      {/* shares */}
-      <Card title="سهم‌های شما" icon="grid">
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'right' }}>
-              <th style={{ padding: '0 0 8px', fontWeight: 500 }}>سهم</th>
-              <th style={{ padding: '0 0 8px', fontWeight: 500, textAlign: 'right' }}>تأمین</th>
-              <th style={{ padding: '0 0 8px', fontWeight: 500, textAlign: 'right' }}>موجودی</th>
-            </tr>
-          </thead>
-          <tbody>
-            {m.shares.map((s) => (
-              <tr key={s.label} style={{ borderTop: '1px solid var(--hair-2)' }}>
-                <td style={{ padding: '9px 0', fontSize: 13.5, fontWeight: 500, color: 'var(--ink)' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {s.label}
-                    {s.funded
-                      ? <span title="واجد شرایط وام" style={{ display: 'inline-flex', color: 'var(--accent)' }}><Icon name="check" size={13} stroke={2.2} /></span>
-                      : <span title="تأمین‌نشده — واجد وام نیست" style={{ display: 'inline-flex', color: 'var(--ink-3)' }}><Icon name="x" size={12} stroke={2} /></span>}
-                  </span>
-                </td>
-                <td style={{ padding: '9px 0', fontSize: 13, textAlign: 'right' }} className="mono"><span style={{ color: s.funded ? 'var(--accent)' : 'var(--ink-2)', fontWeight: 600 }}>{faPct(s.fundedPct)}٪</span></td>
-                <td style={{ padding: '9px 0', fontSize: 13.5, color: 'var(--ink)', textAlign: 'right', fontWeight: 600 }} className="mono">{fmt(s.balance)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* shares & savings */}
+      <Card title="سهم‌ها و سقف وام" icon="grid">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {[
+            ['تعداد سهم', fmt(m.nShares)],
+            ['سهم‌های تأمین‌شده', `${fmt(m.fundedShares)} از ${fmt(m.nShares)}`],
+            ['پس‌انداز', fmt(m.seedBalance) + ' تومان'],
+            ['سقف وام', fmt(m.maxLoan) + ' تومان'],
+          ].map(([l, v], i) => (
+            <div key={l} style={{ background: 'var(--surface-2)', borderRadius: 9, padding: '11px 13px' }}>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{l}</div>
+              <div className="mono" style={{ fontSize: 15.5, fontWeight: 600, color: i === 3 ? 'var(--accent)' : 'var(--ink)', marginTop: 3 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+        {m.funding && m.pendingShare && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-2)', marginBottom: 7, gap: 10, whiteSpace: 'nowrap' }}>
+              <span><span className="mono" style={{ fontWeight: 600 }}>{fmt(m.pendingShare.paid)}</span> از <span className="mono">{fmt(m.pendingShare.target)}</span> تومان تأمین‌شده</span>
+              <span className="mono" style={{ fontWeight: 600, color: 'var(--accent)' }}>{faPct(m.pendingShare.pct)}٪</span>
+            </div>
+            <div style={{ height: 9, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
+              <div style={{ width: `${m.pendingShare.pct}%`, height: '100%', background: 'var(--accent)', borderRadius: 99 }} />
+            </div>
+          </div>
+        )}
         {!m.loanEligible && (
           <div style={{ marginTop: 12, fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.6, paddingTop: 12, borderTop: '1px solid var(--hair-2)' }}>
-            تا زمانی که دست‌کم یک سهم به ارزش کامل ({fmt(fund.settings.parValue)} تومان) تأمین نشود، این عضو واجد شرایط وام نیست. پس‌انداز را می‌توان از طریق «ثبت پرداخت» افزایش داد.
+            تا زمانی که پس‌انداز به حداقل هر سهم ({fmt(fund.settings.parValue)} تومان) نرسد، این عضو واجد شرایط وام نیست. پس‌انداز را می‌توان از طریق «ثبت پرداخت» افزایش داد.
           </div>
         )}
       </Card>

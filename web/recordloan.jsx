@@ -163,11 +163,16 @@ function RecordLoan() {
           </RLSelect>
         </FieldRL>
 
-        {/* member snapshot: eligibility + fund availability */}
+        {/* member snapshot: eligibility + loan ceiling + fund availability */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'var(--surface-2)', borderRadius: 12, padding: '14px 16px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 120 }}>
+          <div style={{ flex: 1, minWidth: 110 }}>
+            <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>سقف وام این عضو</div>
+            <Money value={member.maxLoan} unit="تومان" style={{ fontSize: 18, fontWeight: 600, color: 'var(--accent)', display: 'block', marginTop: 2 }} />
+            <div style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}>{faPct(member.fundedShares)} سهم تأمین‌شده</div>
+          </div>
+          <div style={{ minWidth: 100 }}>
             <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>قابل وام‌دهی صندوق</div>
-            <Money value={fund.kpis.available} unit="تومان" style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)', display: 'block', marginTop: 2 }} />
+            <Money value={fund.kpis.available} unit="تومان" style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink)', display: 'block', marginTop: 2 }} />
           </div>
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap',

@@ -31,14 +31,19 @@ function SortHead({ col, sortKey, sortDir, onSort }) {
 }
 
 function ShareDetail({ m }) {
+  const par = (window.FUND.settings && window.FUND.settings.parValue) || 0;
+  const stats = [
+    ['تعداد سهم', fmt(m.nShares), false],
+    ['پس‌انداز', fmt(m.seedBalance) + ' تومان', false],
+    ['سهم‌های تأمین‌شده', `${fmt(m.fundedShares)} از ${fmt(m.nShares)}`, false],
+    ['سقف وام', fmt(m.maxLoan) + ' تومان', true],
+  ];
   return (
     <div style={{ display: 'grid', gridTemplateColumns: m.loan ? '1.1fr 1fr' : '1fr', gap: 28, padding: '4px 2px 6px', maxWidth: m.loan ? 'none' : 620 }}>
-      {/* shares */}
+      {/* shares & savings */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink-3)' }}>
-            {m.nShares === 1 ? 'سهم · تأمین تا ارزش کامل' : `${fmt(m.nShares)} سهم · تأمین تا ارزش کامل`}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink-3)' }}>سهم‌ها و پس‌انداز</div>
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
             padding: '3px 9px', borderRadius: 99,
@@ -50,50 +55,25 @@ function ShareDetail({ m }) {
             {m.loanEligible ? 'واجد شرایط وام' : 'واجد شرایط وام نیست'}
           </span>
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'right' }}>
-              <th style={{ padding: '0 0 6px', fontWeight: 500 }}>سهم</th>
-              <th style={{ padding: '0 0 6px', fontWeight: 500 }}>از تاریخ</th>
-              <th style={{ padding: '0 0 6px', fontWeight: 500, textAlign: 'right' }}>تأمین</th>
-              <th style={{ padding: '0 0 6px', fontWeight: 500, textAlign: 'right' }}>موجودی</th>
-            </tr>
-          </thead>
-          <tbody>
-            {m.shares.map((s) => (
-              <tr key={s.label} style={{ borderTop: '1px solid var(--hair-2)' }}>
-                <td style={{ padding: '8px 0', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {s.label}
-                    {s.funded
-                      ? <span title="واجد شرایط وام" style={{ display: 'inline-flex', color: 'var(--accent)' }}><Icon name="check" size={13} stroke={2.2} /></span>
-                      : <span title="تأمین‌نشده — واجد وام نیست" style={{ display: 'inline-flex', color: 'var(--ink-3)' }}><Icon name="arrowUpRight" size={12} /></span>}
-                  </span>
-                </td>
-                <td style={{ padding: '8px 0', fontSize: 13, color: 'var(--ink-2)' }} className="mono">{s.sinceLabel}</td>
-                <td style={{ padding: '8px 0', fontSize: 13, textAlign: 'right' }} className="mono"><span style={{ color: s.funded ? 'var(--accent)' : 'var(--ink-2)', fontWeight: 600 }}>{faPct(s.fundedPct)}٪</span></td>
-                <td style={{ padding: '8px 0', fontSize: 13, color: 'var(--ink)', textAlign: 'right', fontWeight: 500 }} className="mono">{fmt(s.balance)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {stats.map(([l, v, hl]) => (
+            <div key={l} style={{ background: 'var(--surface)', border: `1px solid ${hl ? 'var(--accent-line)' : 'var(--hair-2)'}`, borderRadius: 9, padding: '10px 12px' }}>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{l}</div>
+              <div className="mono" style={{ fontSize: 15, fontWeight: 600, color: hl ? 'var(--accent)' : 'var(--ink)', marginTop: 3 }}>{v}</div>
+            </div>
+          ))}
+        </div>
         {m.pendingShare && (
           <div style={{ marginTop: 14, background: 'var(--surface)', border: '1px solid var(--accent-line)', borderRadius: 10, padding: '13px 15px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, fontWeight: 600, color: 'var(--accent)', whiteSpace: 'nowrap' }}>
-                <Icon name="arrowUpRight" size={14} /> سهم تأمین‌نشده · {m.pendingShare.label}
-              </div>
-              <span style={{ fontSize: 11.5, color: 'var(--ink-3)', whiteSpace: 'nowrap' }}>از {m.pendingShare.sinceLabel}</span>
-            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 12, color: 'var(--ink-2)', marginBottom: 7, whiteSpace: 'nowrap', gap: 10 }}>
-              <span><span className="mono" style={{ fontWeight: 600, color: 'var(--ink)' }}>{fmt(m.pendingShare.paid)}</span> از <span className="mono">{fmt(m.pendingShare.target)}</span> تومان تأمین‌شده</span>
+              <span><span className="mono" style={{ fontWeight: 600, color: 'var(--ink)' }}>{fmt(m.pendingShare.paid)}</span> از <span className="mono">{fmt(m.pendingShare.target)}</span> تومان تأمین‌شده (برای {m.pendingShare.label})</span>
               <span className="mono" style={{ fontWeight: 600, color: 'var(--accent)' }}>{faPct(m.pendingShare.pct)}٪</span>
             </div>
             <div style={{ height: 9, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
               <div style={{ width: `${m.pendingShare.pct}%`, height: '100%', background: 'var(--accent)', borderRadius: 99 }} />
             </div>
             <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 8 }}>
-              <span className="mono">{fmt(m.pendingShare.remaining)}</span> تومان تا تأمین کامل و واجد شرایط وام شدن
+              <span className="mono">{fmt(m.pendingShare.remaining)}</span> تومان تا تأمین کامل سهم‌ها (حداقل پس‌انداز هر سهم: <span className="mono">{fmt(par)}</span>)
             </div>
           </div>
         )}

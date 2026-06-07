@@ -1,6 +1,6 @@
-/* recordpayment.jsx — فرم ثبت پرداخت (حق عضویت یا قسط تأمین سهم).
-   موجودیِ ذخیره‌شدهٔ عضو را افزایش می‌دهد و مقدار جدید را زنده نشان می‌دهد.
-   موجودی یک عدد ذخیره‌شدهٔ معتبر است — با تغییر حق عضویت دستکاری نمی‌شود. */
+/* recordpayment.jsx — ثبت پرداخت: «پس‌انداز» (افزایش پس‌انداز عضو) یا «قسط وام»
+   (کاهش ماندهٔ وام). مبلغ آزاد است؛ عضو می‌تواند بیش از حداقل بپردازد و سیستم
+   مانده را بر اساس «مبلغ پرداختی» نگه می‌دارد، نه تعداد اقساط. */
 
 const FA_MONTHS_RP = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 
@@ -74,17 +74,15 @@ function RecordPayment() {
     );
   }
   const isMobile = useIsMobile();
-  const PAR = fund.settings.parValue;
   const FEE = fund.settings.membershipFee;
-  const INST = Math.round(PAR / fund.settings.defaultInstallments);
+  const PAR = fund.settings.parValue;
 
-  // default to a member currently funding a share
   const defId = (fund.purchasing[0] || actives[0]).id;
   const [memberId, setMemberId] = React.useState(defId);
-  const member = fund.members.find((m) => m.id === memberId);
+  const member = fund.members.find((m) => m.id === memberId) || actives[0];
+  const hasLoan = !!member.loan;
 
-  const [type, setType] = React.useState('membership'); // membership | installment
-  const [shareIdx, setShareIdx] = React.useState(0);
+  const [type, setType] = React.useState('savings'); // savings | loan
   const [amount, setAmount] = React.useState(FEE);
   const today = React.useMemo(todayJalali, []);
   const [d, setD] = React.useState(today.d);
@@ -92,45 +90,28 @@ function RecordPayment() {
   const [yr, setYr] = React.useState(today.y);
   const [saved, setSaved] = React.useState(null);
 
-  // when type changes, set sensible default amount + share
+  // keep the type valid for the selected member; set a sensible default amount
   React.useEffect(() => {
-    if (type === 'membership') setAmount(FEE);
-    else {
-      setAmount(INST);
-      const fIdx = member.shares.findIndex((s) => !s.funded);
-      setShareIdx(fIdx >= 0 ? fIdx : 0);
-    }
+    if (type === 'loan' && !hasLoan) { setType('savings'); return; }
+    setAmount(type === 'loan' && member.loan ? member.loan.monthly : FEE);
   }, [type, memberId]);
 
   const amt = Number(amount) || 0;
-  const targetShare = member.shares[shareIdx] || member.shares[0];
-  const newSeed = member.seedBalance + amt;
-  const newShareBal = (targetShare ? targetShare.balance : 0) + amt;
-  const newSharePct = Math.min(100, Math.round((newShareBal / PAR) * 100));
-  const shareNowFunded = type === 'installment' && newShareBal >= PAR && targetShare && !targetShare.funded;
+  const isLoan = type === 'loan' && hasLoan;
+  const oldVal = isLoan ? member.loan.outstanding : member.seedBalance;
+  const newVal = isLoan ? Math.max(0, member.loan.outstanding - amt) : member.seedBalance + amt;
+  const nowEligible = !isLoan && member.seedBalance < PAR && member.seedBalance + amt >= PAR;
+  const loanCleared = isLoan && newVal === 0;
 
   const submit = async () => {
     if (window.API && window.API.live) {
       try {
-        const share = targetShare || member.shares[0];
         const date = window.API.jalaliToMs(yr, mo, d);
-        // both «حق عضویت» and «قسط تأمین سهم» top up an authoritative share balance
-        await window.API.recordSeed({ memberId, shareId: share.id, amount: amt, date });
-      } catch (e) {
-        alert('خطا در ثبت پرداخت: ' + (e && e.message ? e.message : e));
-        return;
-      }
+        if (isLoan) await window.API.recordInstallment({ memberId, loanId: member.loan.id, amount: amt, date });
+        else await window.API.recordSeed({ memberId, amount: amt, date });
+      } catch (e) { alert('خطا در ثبت پرداخت: ' + (e && e.message ? e.message : e)); return; }
     }
-    setSaved({
-      name: member.name,
-      amount: amt,
-      type,
-      shareLabel: targetShare ? targetShare.label : '',
-      oldSeed: member.seedBalance,
-      newSeed,
-      nowFunded: shareNowFunded,
-      date: `${faDigits(d)} ${FA_MONTHS_RP[mo - 1]} ${faDigits(yr)}`,
-    });
+    setSaved({ name: member.name, amount: amt, isLoan, oldVal, newVal, nowEligible, loanCleared, date: `${faDigits(d)} ${FA_MONTHS_RP[mo - 1]} ${faDigits(yr)}` });
     window.scrollTo(0, 0);
   };
 
@@ -143,17 +124,21 @@ function RecordPayment() {
           </div>
           <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 23, color: 'var(--ink)', lineHeight: 1.4 }}>پرداخت ثبت شد</h2>
           <p style={{ margin: '10px 0 20px', fontSize: 14.5, color: 'var(--ink-2)', lineHeight: 1.7 }}>
-            {saved.type === 'membership' ? 'حق عضویت' : `قسط ${saved.shareLabel}`} به مبلغ <span className="mono" style={{ fontWeight: 600 }}>{fmt(saved.amount)}</span> تومان برای <strong>{saved.name}</strong> در {saved.date} ثبت شد.
+            {saved.isLoan ? 'قسط وام' : 'پس‌انداز'} به مبلغ <span className="mono" style={{ fontWeight: 600 }}>{fmt(saved.amount)}</span> تومان برای <strong>{saved.name}</strong> در {saved.date} ثبت شد.
           </p>
-          {/* old → new balance */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'var(--surface-2)', borderRadius: 12, padding: '16px 20px' }}>
-            <div><div style={{ fontSize: 11, color: 'var(--ink-3)' }}>موجودی پیشین</div><div className="mono" style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink-3)', marginTop: 3 }}>{fmt(saved.oldSeed)}</div></div>
+            <div><div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{saved.isLoan ? 'ماندهٔ پیشین' : 'پس‌انداز پیشین'}</div><div className="mono" style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink-3)', marginTop: 3 }}>{fmt(saved.oldVal)}</div></div>
             <Icon name="arrowR" size={18} stroke={1.8} style={{ color: 'var(--ink-3)', transform: 'scaleX(-1)' }} />
-            <div><div style={{ fontSize: 11, color: 'var(--accent)' }}>موجودی جدید</div><div className="mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent)', marginTop: 3 }}>{fmt(saved.newSeed)}</div></div>
+            <div><div style={{ fontSize: 11, color: 'var(--accent)' }}>{saved.isLoan ? 'ماندهٔ جدید' : 'پس‌انداز جدید'}</div><div className="mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent)', marginTop: 3 }}>{fmt(saved.newVal)}</div></div>
           </div>
-          {saved.nowFunded && (
+          {saved.nowEligible && (
             <div style={{ marginTop: 14, fontSize: 13, fontWeight: 600, color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Icon name="check" size={15} stroke={2.2} /> این سهم اکنون کاملاً تأمین و واجد شرایط وام است.
+              <Icon name="check" size={15} stroke={2.2} /> این عضو اکنون واجد شرایط وام است.
+            </div>
+          )}
+          {saved.loanCleared && (
+            <div style={{ marginTop: 14, fontSize: 13, fontWeight: 600, color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Icon name="check" size={15} stroke={2.2} /> این وام به‌طور کامل بازپرداخت شد.
             </div>
           )}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 26 }}>
@@ -187,11 +172,17 @@ function RecordPayment() {
         </FieldRP>
 
         {/* member snapshot */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'var(--surface-2)', borderRadius: 12, padding: '14px 16px' }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>موجودی فعلی (ذخیره‌شده)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'var(--surface-2)', borderRadius: 12, padding: '14px 16px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 120 }}>
+            <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>پس‌انداز فعلی</div>
             <Money value={member.seedBalance} unit="تومان" style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)', display: 'block', marginTop: 2 }} />
           </div>
+          {hasLoan && (
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>ماندهٔ وام</div>
+              <div className="mono" style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink-2)', marginTop: 2 }}>{fmt(member.loan.outstanding)}</div>
+            </div>
+          )}
           <div style={{ textAlign: 'left' }}>
             <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>تأمین</div>
             <div className="mono" style={{ fontSize: 18, fontWeight: 600, color: member.fundedPct >= 100 ? 'var(--accent)' : 'var(--ink-2)', marginTop: 2 }}>{faPct(member.fundedPct)}٪</div>
@@ -199,22 +190,13 @@ function RecordPayment() {
         </div>
 
         <FieldRP label="نوع پرداخت">
-          <Segmented2 value={type} onChange={setType} options={[
-            { key: 'membership', label: 'حق عضویت', icon: 'coins' },
-            { key: 'installment', label: 'قسط تأمین سهم', icon: 'arrowUpRight' },
-          ]} />
+          <Segmented2 value={type} onChange={setType} options={hasLoan
+            ? [{ key: 'savings', label: 'پس‌انداز', icon: 'coins' }, { key: 'loan', label: 'قسط وام', icon: 'arrowUpRight' }]
+            : [{ key: 'savings', label: 'پس‌انداز', icon: 'coins' }]} />
         </FieldRP>
 
-        {type === 'installment' && (
-          <FieldRP label="سهم">
-            <RPSelect value={shareIdx} onChange={(v) => setShareIdx(Number(v))}>
-              {member.shares.map((s, i) => <option key={i} value={i}>{s.label} — {faDigits(s.fundedPct)}٪ تأمین‌شده{s.funded ? ' (کامل)' : ''}</option>)}
-            </RPSelect>
-          </FieldRP>
-        )}
-
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.6fr', gap: 14 }}>
-          <FieldRP label="مبلغ (تومان)" hint={type === 'membership' ? `پیش‌فرض حق عضویت: ${fmt(FEE)}` : `پیش‌فرض قسط: ${fmt(INST)}`}>
+          <FieldRP label="مبلغ (تومان)" hint={isLoan ? `قسط ماهانه: ${fmt(member.loan.monthly)} — می‌توانید بیشتر بپردازید` : `حق عضویت: ${fmt(FEE)} — مبلغ آزاد است`}>
             <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))} className="mono"
               style={{ ...rpInput, direction: 'ltr', textAlign: 'left' }} />
           </FieldRP>
@@ -235,15 +217,20 @@ function RecordPayment() {
 
         {/* live preview */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, background: 'var(--accent-soft)', border: '1px solid var(--accent-line)', borderRadius: 12, padding: '14px 16px' }}>
-          <div style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>پس از این پرداخت، موجودی به</div>
+          <div style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{isLoan ? 'ماندهٔ وام پس از این پرداخت' : 'پس‌انداز پس از این پرداخت'}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <Money value={newSeed} style={{ fontSize: 20, fontWeight: 700, color: 'var(--accent)' }} />
-            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>تومان می‌رسد</span>
+            <Money value={newVal} style={{ fontSize: 20, fontWeight: 700, color: 'var(--accent)' }} />
+            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>تومان</span>
           </div>
         </div>
-        {shareNowFunded && (
+        {nowEligible && (
           <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: -6 }}>
-            <Icon name="check" size={14} stroke={2.2} /> با این پرداخت، {targetShare.label} کاملاً تأمین و واجد شرایط وام می‌شود.
+            <Icon name="check" size={14} stroke={2.2} /> با این پرداخت، این عضو واجد شرایط وام می‌شود.
+          </div>
+        )}
+        {loanCleared && (
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: -6 }}>
+            <Icon name="check" size={14} stroke={2.2} /> با این پرداخت، وام به‌طور کامل بازپرداخت می‌شود.
           </div>
         )}
       </div>

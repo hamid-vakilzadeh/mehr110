@@ -121,7 +121,7 @@ function AddMember() {
         const payload = {
           firstName: first.trim(), lastName: last.trim(), family: last.trim(),
           dob, phones: phones.filter((p) => p.trim()), accounts: accounts.filter((a) => a.trim()),
-          referredBy: referrer.trim() || null, status: active ? 'active' : 'inactive',
+          referredBy: referrer.trim() || null, status: active ? 'active' : 'inactive', shares,
         };
         if (isEdit) { await window.API.updateMember({ id: editM.id, ...payload }); }
         else { await window.API.createMember({ ...payload, initialShares: shares }); }
@@ -232,7 +232,7 @@ function AddMember() {
         {/* membership */}
         {sectionTitle('عضویت و سهم')}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, alignItems: 'start' }}>
-          <Field label="تعداد سهم اولیه">
+          <Field label="تعداد سهم">
             <div style={{ display: 'flex', alignItems: 'center', gap: 0, border: '1px solid var(--hair)', borderRadius: 10, overflow: 'hidden', width: 'fit-content' }}>
               <button type="button" onClick={() => setShares(Math.max(0, shares - 1))} style={{ width: 42, height: 42, border: 'none', background: 'var(--surface-2)', cursor: 'pointer', fontSize: 20, color: 'var(--ink)' }}>−</button>
               <span className="mono" style={{ width: 56, textAlign: 'center', fontSize: 16, fontWeight: 600, color: 'var(--ink)' }}>{faDigits(shares)}</span>

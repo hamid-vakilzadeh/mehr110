@@ -1,22 +1,18 @@
 /* ============================================================
    Repository — all Firestore reads + the enriched "member view".
    Functions own every read/write (Admin SDK); the browser never does.
+
+   A member now stores `savings` (authoritative total) and `shares` (a count)
+   directly on the member doc — there is no shares sub-collection.
    ============================================================ */
 import { db } from "./admin";
 import { COL, FUND_DOC, ConfigDoc, LoanRotationDoc } from "./types";
-import {
-  ShareView,
-  LoanView,
-  MemberDerived,
-  deriveShare,
-  deriveLoan,
-  deriveMember,
-  isBehind,
-} from "./derive";
+import { LoanView, MemberDerived, deriveLoan, deriveMember, isBehind } from "./derive";
 import { Timestamp } from "firebase-admin/firestore";
 
-const ms = (t: unknown): number | null =>
-  t instanceof Timestamp ? t.toMillis() : null;
+const ms = (t: unknown): number | null => (t instanceof Timestamp ? t.toMillis() : null);
+
+const DEFAULT_LOAN_PER_SHARE = 60000;
 
 export interface ReceiptView {
   id: string;
@@ -32,20 +28,19 @@ export interface MemberView extends MemberDerived {
   id: string;
   firstName: string;
   lastName: string;
-  name: string; // firstName + " " + lastName (UI convenience)
+  name: string;
   family: string;
   dob: number | null;
   phones: string[];
   accounts: string[];
-  referredBy: string | null; // memberId
-  referredByName: string | null; // resolved name for display
+  referredBy: string | null; // memberId or raw name
+  referredByName: string | null;
   status: "active" | "inactive";
   missed: number;
   behind: boolean;
   loanReceived: boolean;
   loanPos: number;
   createdAt: number | null;
-  shares: ShareView[];
   loan: LoanView | null;
   seedReceipts: ReceiptView[];
   installmentReceipts: ReceiptView[];
@@ -53,10 +48,11 @@ export interface MemberView extends MemberDerived {
 
 export async function getConfig(): Promise<ConfigDoc> {
   const snap = await db.collection(COL.fund).doc(FUND_DOC.config).get();
-  if (!snap.exists) {
-    throw new Error("fund/config not found — run the seed first.");
-  }
-  return snap.data() as ConfigDoc;
+  if (!snap.exists) throw new Error("fund/config not found — run the seed first.");
+  const c = snap.data() as ConfigDoc;
+  // default any setting added after the doc was created
+  if (typeof c.loanPerShare !== "number") c.loanPerShare = DEFAULT_LOAN_PER_SHARE;
+  return c;
 }
 
 export async function getRotation(): Promise<LoanRotationDoc> {
@@ -65,29 +61,24 @@ export async function getRotation(): Promise<LoanRotationDoc> {
   return snap.data() as LoanRotationDoc;
 }
 
-/** Load one fully-enriched member (shares + loan + receipts + derived). */
+/** Load one fully-enriched member (savings + shares + loan + receipts + derived). */
 export async function loadMember(
   memberId: string,
   parValue: number,
+  loanPerShare: number,
   nameById?: Map<string, string>
 ): Promise<MemberView | null> {
   const ref = db.collection(COL.members).doc(memberId);
-  const [mSnap, sharesSnap, loanSnap, paymentsSnap] = await Promise.all([
+  const [mSnap, loanSnap, paymentsSnap] = await Promise.all([
     ref.get(),
-    ref.collection(COL.shares).orderBy("openedAt", "asc").get(),
     ref.collection(COL.loan).where("status", "==", "active").limit(1).get(),
     ref.collection(COL.payments).orderBy("date", "desc").get(),
   ]);
   if (!mSnap.exists) return null;
   const m = mSnap.data() as Record<string, unknown>;
 
-  const shares: ShareView[] = sharesSnap.docs.map((d) => {
-    const s = d.data();
-    return deriveShare(
-      { id: d.id, label: s.label, balance: s.balance, openedAt: ms(s.openedAt) },
-      parValue
-    );
-  });
+  const savings = Number(m.savings) || 0;
+  const shares = Math.max(0, Number(m.shares) || 0);
 
   let loan: LoanView | null = null;
   if (!loanSnap.empty) {
@@ -117,7 +108,7 @@ export async function loadMember(
     };
   });
 
-  const derived = deriveMember(shares, parValue);
+  const derived = deriveMember(savings, shares, parValue, loanPerShare);
   const missed = Number(m.missed) || 0;
   const firstName = String(m.firstName ?? "");
   const lastName = String(m.lastName ?? "");
@@ -133,16 +124,13 @@ export async function loadMember(
     phones: (m.phones as string[]) ?? [],
     accounts: (m.accounts as string[]) ?? [],
     referredBy,
-    // referredBy may be a memberId (spec) or a plain typed name (design form);
-    // resolve an id to its member name, otherwise show the raw string as-is.
     referredByName: referredBy ? (nameById?.get(referredBy) ?? referredBy) : null,
     status: (m.status as "active" | "inactive") ?? "active",
     missed,
-    behind: isBehind(shares, missed),
+    behind: isBehind(savings, shares, parValue, missed),
     loanReceived: !!m.loanReceived,
     loanPos: Number(m.loanPos) || 0,
     createdAt: ms(m.createdAt),
-    shares,
     loan,
     seedReceipts: receipts.filter((r) => r.type === "seed"),
     installmentReceipts: receipts.filter((r) => r.type === "installment"),
@@ -151,16 +139,13 @@ export async function loadMember(
 }
 
 /** Load ALL members fully enriched (used by list + dashboard). */
-export async function loadAllMembers(parValue: number): Promise<MemberView[]> {
+export async function loadAllMembers(parValue: number, loanPerShare: number): Promise<MemberView[]> {
   const all = await db.collection(COL.members).get();
-  // name map for referrer resolution
   const nameById = new Map<string, string>();
   all.docs.forEach((d) => {
     const m = d.data();
     nameById.set(d.id, `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim());
   });
-  const members = await Promise.all(
-    all.docs.map((d) => loadMember(d.id, parValue, nameById))
-  );
+  const members = await Promise.all(all.docs.map((d) => loadMember(d.id, parValue, loanPerShare, nameById)));
   return members.filter((m): m is MemberView => m !== null);
 }

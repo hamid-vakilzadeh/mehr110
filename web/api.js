@@ -96,14 +96,11 @@
   function assembleFund(p) {
     var byId = {};
     var members = p.members.map(function (m) {
-      var openedMs = (m.shares[0] && m.shares[0].openedAt) || m.createdAt;
-      var enrichedShares = m.shares.map(function (s) {
-        return Object.assign({}, s, { sinceLabel: monthYearLabel(s.openedAt) });
-      });
+      // m.shares is now a COUNT; savings is the single authoritative total.
       var enriched = Object.assign({}, m, {
-        shares: enrichedShares,
-        sinceLabel: monthYearLabel(openedMs),
-        since: openedMs ? { y: new Date(openedMs).getUTCFullYear(), m: new Date(openedMs).getUTCMonth() + 1 } : { y: 0, m: 0 },
+        shares: m.shares,
+        nShares: m.nShares != null ? m.nShares : m.shares,
+        sinceLabel: monthYearLabel(m.createdAt),
         dobLabel: fullDateLabel(m.dob),
         // UI expects referredBy to be a display NAME (or null); keep id separately
         referredBy: m.referredByName || null,
@@ -111,9 +108,6 @@
         seedReceipts: (m.seedReceipts || []).map(function (r) { return Object.assign({}, r, { date: fullDateLabel(r.date) }); }),
         installmentReceipts: (m.installmentReceipts || []).map(function (r) { return Object.assign({}, r, { date: fullDateLabel(r.date) }); }),
       });
-      if (m.pendingShare) {
-        enriched.pendingShare = Object.assign({}, m.pendingShare, { sinceLabel: monthYearLabel(m.pendingShare.openedAt) });
-      }
       if (m.loan) {
         enriched.loan = Object.assign({}, m.loan, { term: m.loan.termMonths, installmentsPaid: Math.round((m.loan.principal - m.loan.outstanding) / (m.loan.monthly || 1)) });
       }

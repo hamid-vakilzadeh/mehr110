@@ -71,6 +71,7 @@ function Settings() {
   const [fee, setFee] = React.useState(String(s.membershipFee));
   const [inst, setInst] = React.useState(String(s.defaultInstallments));
   const [par, setPar] = React.useState(String(s.parValue));
+  const [lps, setLps] = React.useState(String(s.loanPerShare != null ? s.loanPerShare : 60000));
   const [setState, setSetState] = React.useState('idle');
   const [setErr, setSetErr] = React.useState('');
 
@@ -87,7 +88,7 @@ function Settings() {
     if (!(Number(inst) > 0) || !(Number(par) > 0)) { setSetErr('اقساط و ارزش سهم باید بزرگ‌تر از صفر باشند.'); return; }
     setSetErr(''); setSetState('saving');
     try {
-      await api.updateSettings({ membershipFee: Number(fee) || 0, defaultInstallments: Number(inst), parValue: Number(par) });
+      await api.updateSettings({ membershipFee: Number(fee) || 0, defaultInstallments: Number(inst), parValue: Number(par), loanPerShare: Number(lps) || 0 });
       setSetState('saved'); setTimeout(() => setSetState('idle'), 2200);
     } catch (e) { setSetErr('خطا در ذخیره: ' + (e && e.message ? e.message : e)); setSetState('idle'); }
   };
@@ -130,8 +131,9 @@ function Settings() {
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
           <NumberField label="حق عضویت ماهانه (تومان)" value={fee} onChange={setFee} />
           <NumberField label="اقساط پیش‌فرض سهم" value={inst} onChange={setInst} />
-          <NumberField label="ارزش کامل سهم — این ماه (تومان)" value={par} onChange={setPar} />
-          <NumberField label="ماه آینده (تومان)" value={String(parNext)} readOnly hint="ارزش کامل سهم + حق عضویت ماهانه" />
+          <NumberField label="حداقل پس‌انداز هر سهم — این ماه (تومان)" value={par} onChange={setPar} hint="هر سهم برای واجد شرایط وام شدن باید این مبلغ تأمین شود" />
+          <NumberField label="ماه آینده (تومان)" value={String(parNext)} readOnly hint="حداقل پس‌انداز + حق عضویت ماهانه" />
+          <NumberField label="سقف وام هر سهم (تومان)" value={lps} onChange={setLps} hint="وام هر عضو = سهم‌های تأمین‌شده × این مبلغ" />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
           <ErrLine msg={setErr} />

@@ -84,28 +84,38 @@ mehr110/
 
 ## Authoritative vs derived (the core of the model)
 
-Only two stored numbers are **authoritative**; everything else is recomputed on
+Three stored numbers are **authoritative**; everything else is recomputed on
 read so that changing settings can never corrupt history.
 
-* `share.balance` — integer Toman actually paid into a share. Changes **only**
-  via `payments.recordSeed` (`balance += amount`). **Never** recomputed from the
-  fee or elapsed months.
-* `loan.outstanding` — principal minus installments paid; decremented by
-  `payments.recordInstallment`.
+* `member.savings` — total integer Toman the member has saved. Changes **only**
+  via `payments.recordSeed` (`savings += amount`). **Never** recomputed from the fee.
+* `member.shares` — how many shares the member holds (a **count**). Loan capacity
+  scales with it.
+* `loan.outstanding` — principal minus installments paid; decremented **by the
+  amount paid** (not by a count) in `payments.recordInstallment`, so members can
+  overpay and the remaining stays exact.
 
-Derived every read (`functions/src/derive.ts`): per-share `funded` /
-`fundedPct` / `loanEligible`; per-member `seedBalance`, `fundedShares`,
-`loanEligible` (≥1 share funded to par), blended `fundedPct`, `behind`; fund
-`totalPool` / `available` (= pool − outstanding) / `outstanding` / counts;
-per-family aggregates; `loan.pct`; rotation next-up.
+Derived every read (`functions/src/derive.ts`), where `parValue` = the minimum
+member savings **per share** and `loanPerShare` = the loan a fully-funded share
+qualifies for:
 
-* `parValue` (۵۷۸۰) is the current full-funded value of a share; it rises by
-  `membershipFee` each period (next ۵۸۴۰). `membershipFee` (۶۰) and
-  `defaultInstallments` (۲۰) are **informational** — they drive no balance math.
-* **Invariant:** a loan may only be issued to a loan-eligible member **and** only
-  if `available ≥ principal`. Enforced in `loans.issue` and in the seed.
+* `fundedShares` = `min(shares, floor(savings / parValue))` — shares fully backed
+  by savings.
+* `loanEligible` = `fundedShares ≥ 1` (savings reached the minimum for one share).
+* `maxLoan` = `fundedShares × loanPerShare` (e.g. 5 funded shares → 5 × ۶۰٬۰۰۰).
+* `fundedPct` = `savings ÷ (shares × parValue)`; plus fund `totalPool` /
+  `available` (= pool − outstanding) / counts, per-family aggregates, `loan.pct`.
 
-All 20 of these relationships are checked by `verify-local.js` (see below).
+Settings (`fund/config`, editable on the Settings page): `membershipFee` (۶۰),
+`defaultInstallments` (۲۰), `parValue` (۵۷۸۰, +fee each period), `loanPerShare`
+(۶۰٬۰۰۰). All informational — they drive no stored balance.
+
+* **Invariant:** a new loan may only go to a loan-eligible member, capped at
+  `maxLoan`, and only if `available ≥ outstanding`. Pre-existing loans (with
+  installments already paid) can be recorded with those checks skipped.
+
+These relationships are verified against the real compiled handlers (seed →
+dashboard, recordSeed, loan cap, over-payment, share edits).
 
 ---
 

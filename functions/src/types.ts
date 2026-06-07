@@ -20,20 +20,16 @@ export interface MemberDoc {
   accounts: string[];
   referredBy: string | null; // memberId of the معرف (referrer)
   status: Status;
-  behind: boolean; // DERIVED (stored for query): has an under-funded share from missed payments
+  // *** AUTHORITATIVE *** total Toman the member has saved. Changes ONLY via
+  // payments.recordSeed (savings += amount). Never recomputed from the fee.
+  savings: number;
+  // how many shares the member holds — a COUNT. Loan capacity scales with it.
+  shares: number;
+  behind: boolean; // DERIVED (stored for query): flagged behind on payments
   missed: number; // count of missed membership payments
   loanReceived: boolean; // received a loan in the CURRENT round
   loanPos: number; // position in the loan order (mirror of loanRotation.order index)
   createdAt: Timestamp;
-}
-
-/** members/{memberId}/shares/{shareId} */
-export interface ShareDoc {
-  label: string; // "سهم الف", ...
-  openedAt: Timestamp;
-  /** *** AUTHORITATIVE *** integer Toman actually paid into this share.
-   *  Never recomputed from the fee. Changes only via payments.recordSeed. */
-  balance: number;
 }
 
 /** members/{memberId}/loan/{loanId} (0..1 active) */
@@ -63,7 +59,8 @@ export interface ConfigDoc {
   currency: string;
   membershipFee: number; // expected monthly fee — drives NO balance math
   defaultInstallments: number; // UI default only
-  parValue: number; // current full-funded value of a share THIS period
+  parValue: number; // minimum member savings PER SHARE this period (variable monthly)
+  loanPerShare: number; // max loan a single fully-funded share qualifies for
   asOf: Timestamp;
 }
 

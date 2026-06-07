@@ -1,20 +1,12 @@
 /* ============================================================
    DERIVED FIELDS — recomputed server-side on every read/aggregate.
-   NEVER trust the client for any of these. The only authoritative
-   stored numbers are share.balance and loan.outstanding.
+   The only authoritative stored numbers are:
+     • member.savings   (total Toman the member has saved)
+     • member.shares    (how many shares the member holds — a count)
+     • loan.outstanding (remaining principal, decremented by amount paid)
+   Everything below is derived from those + the current settings.
    ============================================================ */
 import { pct } from "./money";
-
-export interface ShareView {
-  id: string;
-  label: string;
-  openedAt: number | null; // epoch ms (client converts to Jalali)
-  balance: number; // authoritative
-  // derived:
-  funded: boolean;
-  fundedPct: number;
-  loanEligible: boolean;
-}
 
 export interface LoanView {
   id: string;
@@ -24,28 +16,10 @@ export interface LoanView {
   outstanding: number; // authoritative
   status: "active" | "repaid";
   issuedAt: number | null;
-  // derived:
   pct: number; // repaid %
 }
 
-/** Per-share derived fields against the CURRENT parValue. */
-export function deriveShare(
-  s: { id: string; label: string; balance: number; openedAt?: number | null },
-  parValue: number
-): ShareView {
-  const funded = s.balance >= parValue;
-  return {
-    id: s.id,
-    label: s.label,
-    openedAt: s.openedAt ?? null,
-    balance: s.balance,
-    funded,
-    fundedPct: pct(s.balance, parValue),
-    loanEligible: funded,
-  };
-}
-
-/** Loan repaid %. outstanding is authoritative. */
+/** Loan repaid %. outstanding is authoritative (decremented by amount, not count). */
 export function deriveLoan(l: {
   id: string;
   principal: number;
@@ -68,31 +42,45 @@ export function deriveLoan(l: {
 }
 
 export interface MemberDerived {
-  seedBalance: number; // sum of share balances (authoritative sum)
-  nShares: number;
-  fundedShares: number;
-  loanEligible: boolean; // >= 1 fully-funded share
-  fundedPct: number; // blended: seedBalance / (nShares * par)
-  funding: boolean; // has at least one under-funded share
+  savings: number; // authoritative total saved
+  seedBalance: number; // alias of savings (kept for the existing UI)
+  nShares: number; // share count
+  fullTarget: number; // shares × parValue (savings needed to fully fund all shares)
+  fundedShares: number; // shares fully backed by savings: min(shares, floor(savings/par))
+  loanEligible: boolean; // has met the minimum for at least one share
+  maxLoan: number; // fundedShares × loanPerShare — how much they can borrow
+  fundedPct: number; // savings ÷ (shares × par)
+  funding: boolean; // still below full funding for their shares
 }
 
-/** Per-member derived fields. */
-export function deriveMember(shares: ShareView[], parValue: number): MemberDerived {
-  const nShares = shares.length;
-  const seedBalance = shares.reduce((t, s) => t + s.balance, 0);
-  const fundedShares = shares.filter((s) => s.funded).length;
+/**
+ * parValue = the minimum member savings PER SHARE (variable each month).
+ * loanPerShare = max loan a single fully-funded share qualifies for.
+ * A member must save `parValue` to fund one share; each extra share needs
+ * another `parValue`. Loan capacity = funded shares × loanPerShare.
+ */
+export function deriveMember(
+  savings: number,
+  shares: number,
+  parValue: number,
+  loanPerShare: number
+): MemberDerived {
+  const fullTarget = shares * parValue;
+  const fundedShares = parValue > 0 ? Math.min(shares, Math.floor(savings / parValue)) : 0;
   return {
-    seedBalance,
-    nShares,
+    savings,
+    seedBalance: savings,
+    nShares: shares,
+    fullTarget,
     fundedShares,
     loanEligible: fundedShares >= 1,
-    fundedPct: nShares > 0 ? pct(seedBalance, nShares * parValue) : 0,
-    funding: shares.some((s) => !s.funded),
+    maxLoan: fundedShares * loanPerShare,
+    fundedPct: fullTarget > 0 ? pct(savings, fullTarget) : 0,
+    funding: savings < fullTarget,
   };
 }
 
-/** A member is "behind" if any share is under-funded *and* they have missed
- *  payments on record. `missed` is the stored count of missed membership fees. */
-export function isBehind(shares: ShareView[], missed: number): boolean {
-  return missed > 0 && shares.some((s) => !s.funded);
+/** "Behind" = flagged as having missed payments AND not yet fully funded. */
+export function isBehind(savings: number, shares: number, parValue: number, missed: number): boolean {
+  return missed > 0 && savings < shares * parValue;
 }

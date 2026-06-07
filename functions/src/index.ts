@@ -66,7 +66,7 @@ async function allocReceiptNo(
 /** Recompute & persist a member's `behind` flag from current shares. */
 async function refreshBehind(memberId: string): Promise<void> {
   const cfg = await getConfig();
-  const m = await loadMember(memberId, cfg.parValue);
+  const m = await loadMember(memberId, cfg.parValue, cfg.loanPerShare);
   if (m) {
     await db.collection(COL.members).doc(memberId).update({ behind: m.behind });
   }
@@ -105,7 +105,7 @@ export const setAdminName = onCall(async (req: CallableRequest) => {
 export const membersList = onCall(async (req) => {
   requireAdmin(req);
   const cfg = await getConfig();
-  const members = await loadAllMembers(cfg.parValue);
+  const members = await loadAllMembers(cfg.parValue, cfg.loanPerShare);
   return { members, parValue: cfg.parValue };
 });
 
@@ -113,7 +113,7 @@ export const membersGet = onCall(async (req) => {
   const id = str(req.data?.id, "id");
   requireSelfOrAdmin(req, id);
   const cfg = await getConfig();
-  const member = await loadMember(id, cfg.parValue);
+  const member = await loadMember(id, cfg.parValue, cfg.loanPerShare);
   if (!member) throw new HttpsError("not-found", "عضو یافت نشد.");
   return { member };
 });
@@ -124,12 +124,12 @@ export const membersCreate = onCall(async (req) => {
   const firstName = str(d.firstName, "نام");
   const lastName = str(d.lastName, "نام خانوادگی");
   const family = optStr(d.family) ?? "";
-  const initialShares = Math.max(0, Math.min(20, Number(d.initialShares) || 0));
+  const shares = Math.max(0, Math.min(50, Math.floor(Number(d.initialShares) || 0)));
+  const savings = Math.max(0, Math.floor(Number(d.savings) || 0)); // usually 0; lets an admin set an opening balance
   const status = d.status === "inactive" ? "inactive" : "active";
 
   const memberRef = db.collection(COL.members).doc();
-  const batch = db.batch();
-  batch.set(memberRef, {
+  await memberRef.set({
     firstName,
     lastName,
     family,
@@ -138,6 +138,8 @@ export const membersCreate = onCall(async (req) => {
     accounts: strArray(d.accounts),
     referredBy: optStr(d.referredBy),
     status,
+    savings, // authoritative total saved
+    shares, // share COUNT
     behind: false,
     missed: 0,
     loanReceived: false,
@@ -145,17 +147,6 @@ export const membersCreate = onCall(async (req) => {
     createdAt: FieldValue.serverTimestamp(),
     ...rec(req),
   });
-  // initial shares — each opens at balance 0 (under-funded, not loan-eligible)
-  const labels = ["سهم الف", "سهم ب", "سهم ج", "سهم د", "سهم ه"];
-  for (let i = 0; i < initialShares; i++) {
-    const sRef = memberRef.collection(COL.shares).doc();
-    batch.set(sRef, {
-      label: labels[i] || `سهم ${i + 1}`,
-      openedAt: FieldValue.serverTimestamp(),
-      balance: 0,
-    });
-  }
-  await batch.commit();
 
   // append to loan rotation order (active members participate)
   if (status === "active") {
@@ -188,6 +179,7 @@ export const membersUpdate = onCall(async (req) => {
   if (d.accounts !== undefined) patch.accounts = strArray(d.accounts);
   if (d.referredBy !== undefined) patch.referredBy = optStr(d.referredBy);
   if (d.status !== undefined) patch.status = d.status === "inactive" ? "inactive" : "active";
+  if (d.shares !== undefined) patch.shares = Math.max(0, Math.min(50, Math.floor(Number(d.shares) || 0)));
 
   if (Object.keys(patch).length === 0) {
     throw new HttpsError("invalid-argument", "هیچ فیلدی برای به‌روزرسانی ارسال نشده است.");
@@ -239,21 +231,24 @@ export const sharesAdd = onCall(async (req) => {
   const memberId = str(req.data?.memberId, "memberId");
   const ref = db.collection(COL.members).doc(memberId);
   if (!(await ref.get()).exists) throw new HttpsError("not-found", "عضو یافت نشد.");
-  const count = (await ref.collection(COL.shares).get()).size;
-  const labels = ["سهم الف", "سهم ب", "سهم ج", "سهم د", "سهم ه"];
-  const label = optStr(req.data?.label) ?? labels[count] ?? `سهم ${count + 1}`;
-  const sRef = ref.collection(COL.shares).doc();
-  await sRef.set({ label, openedAt: FieldValue.serverTimestamp(), balance: 0, ...rec(req) });
-  return { ok: true, shareId: sRef.id, label };
+  const add = Math.max(1, Math.floor(Number(req.data?.count) || 1)); // how many shares to add
+  const shares = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError("not-found", "عضو یافت نشد.");
+    const n = Math.max(0, Number(snap.data()?.shares) || 0) + add;
+    tx.update(ref, { shares: n, ...rec(req) });
+    return n;
+  });
+  return { ok: true, shares };
 });
 
 export const sharesGet = onCall(async (req) => {
   const memberId = str(req.data?.memberId, "memberId");
   requireSelfOrAdmin(req, memberId);
   const cfg = await getConfig();
-  const m = await loadMember(memberId, cfg.parValue);
+  const m = await loadMember(memberId, cfg.parValue, cfg.loanPerShare);
   if (!m) throw new HttpsError("not-found", "عضو یافت نشد.");
-  return { shares: m.shares };
+  return { shares: m.nShares, savings: m.savings, fundedShares: m.fundedShares, maxLoan: m.maxLoan };
 });
 
 // ============================================================
@@ -264,33 +259,31 @@ export const paymentsRecordSeed = onCall(async (req) => {
   requireAdmin(req);
   const d = req.data ?? {};
   const memberId = str(d.memberId, "memberId");
-  const shareId = str(d.shareId, "shareId");
   const amount = assertPositiveInt(d.amount, "مبلغ");
   const date = toTs(d.date);
 
-  const shareRef = db.collection(COL.members).doc(memberId).collection(COL.shares).doc(shareId);
+  const memberRef = db.collection(COL.members).doc(memberId);
   const out = await db.runTransaction(async (tx) => {
     // --- READS first ---
-    const snap = await tx.get(shareRef);
+    const snap = await tx.get(memberRef);
     const receipt = await allocReceiptNo(tx);
-    if (!snap.exists) throw new HttpsError("not-found", "سهم یافت نشد.");
-    const balance = (snap.data()?.balance as number) || 0;
-    const newBalance = balance + amount; // authoritative
+    if (!snap.exists) throw new HttpsError("not-found", "عضو یافت نشد.");
+    const savings = (Number(snap.data()?.savings) || 0) + amount; // authoritative total
     // --- WRITES ---
-    tx.update(shareRef, { balance: newBalance });
+    tx.update(memberRef, { savings });
     receipt.commit();
-    const pRef = db.collection(COL.members).doc(memberId).collection(COL.payments).doc();
-    tx.set(pRef, { type: "seed", shareId, loanId: null, no: receipt.no, amount, date, ...rec(req) });
-    return { newBalance, no: receipt.no };
+    const pRef = memberRef.collection(COL.payments).doc();
+    tx.set(pRef, { type: "seed", shareId: null, loanId: null, no: receipt.no, amount, date, ...rec(req) });
+    return { savings, no: receipt.no };
   });
 
   await refreshBehind(memberId);
   const cfg = await getConfig();
   return {
     ok: true,
-    shareBalance: out.newBalance,
+    savings: out.savings,
     receiptNo: out.no,
-    funded: out.newBalance >= cfg.parValue,
+    eligible: out.savings >= cfg.parValue,
   };
 });
 
@@ -325,7 +318,7 @@ export const paymentsList = onCall(async (req) => {
   const memberId = str(req.data?.memberId, "memberId");
   requireSelfOrAdmin(req, memberId);
   const cfg = await getConfig();
-  const m = await loadMember(memberId, cfg.parValue);
+  const m = await loadMember(memberId, cfg.parValue, cfg.loanPerShare);
   if (!m) throw new HttpsError("not-found", "عضو یافت نشد.");
   return { seed: m.seedReceipts, installments: m.installmentReceipts };
 });
@@ -351,7 +344,7 @@ export const loansIssue = onCall(async (req) => {
   const outstanding = Math.max(0, principal - installmentsPaid * monthly);
 
   const cfg = await getConfig();
-  const member = await loadMember(memberId, cfg.parValue);
+  const member = await loadMember(memberId, cfg.parValue, cfg.loanPerShare);
   if (!member) throw new HttpsError("not-found", "عضو یافت نشد.");
   if (member.loan && member.loan.status === "active") {
     throw new HttpsError("failed-precondition", "این عضو هم‌اکنون یک وام فعال دارد.");
@@ -364,10 +357,17 @@ export const loansIssue = onCall(async (req) => {
     if (!member.loanEligible) {
       throw new HttpsError(
         "failed-precondition",
-        "این عضو واجد شرایط وام نیست — دست‌کم یک سهم باید تا ارزش کامل تأمین شده باشد."
+        "این عضو واجد شرایط وام نیست — دست‌کم یک سهم باید تا حداقل پس‌انداز تأمین شده باشد."
       );
     }
-    const all = await loadAllMembers(cfg.parValue);
+    // a member can borrow up to fundedShares × loanPerShare
+    if (principal > member.maxLoan) {
+      throw new HttpsError(
+        "failed-precondition",
+        `سقف وام این عضو ${member.maxLoan} تومان است (${member.fundedShares} سهم واجد شرایط).`
+      );
+    }
+    const all = await loadAllMembers(cfg.parValue, cfg.loanPerShare);
     const totalPool = all.reduce((t, m) => t + m.seedBalance, 0);
     const lent = all.reduce((t, m) => t + (m.loan ? m.loan.outstanding : 0), 0);
     const available = totalPool - lent;
@@ -400,7 +400,7 @@ export const loansGet = onCall(async (req) => {
   const memberId = str(req.data?.memberId, "memberId");
   requireSelfOrAdmin(req, memberId);
   const cfg = await getConfig();
-  const m = await loadMember(memberId, cfg.parValue);
+  const m = await loadMember(memberId, cfg.parValue, cfg.loanPerShare);
   if (!m) throw new HttpsError("not-found", "عضو یافت نشد.");
   return { loan: m.loan };
 });
@@ -413,7 +413,7 @@ export const loanOrderGet = onCall(async (req) => {
   requireAdmin(req);
   const rot = await getRotation();
   const cfg = await getConfig();
-  const members = await loadAllMembers(cfg.parValue);
+  const members = await loadAllMembers(cfg.parValue, cfg.loanPerShare);
   const byId = new Map(members.map((m) => [m.id, m]));
   const receivedMap: Record<string, boolean> = {};
   rot.order.forEach((id) => (receivedMap[id] = !!byId.get(id)?.loanReceived));
@@ -472,6 +472,7 @@ export const settingsGet = onCall(async (req) => {
     defaultInstallments: cfg.defaultInstallments,
     parValue: cfg.parValue,
     parNext: cfg.parValue + cfg.membershipFee,
+    loanPerShare: cfg.loanPerShare,
     asOf: cfg.asOf.toMillis(),
   };
 });
@@ -483,7 +484,8 @@ export const settingsUpdate = onCall(async (req) => {
   if (d.membershipFee !== undefined) patch.membershipFee = assertAmount(d.membershipFee, "حق عضویت");
   if (d.defaultInstallments !== undefined)
     patch.defaultInstallments = assertPositiveInt(d.defaultInstallments, "اقساط پیش‌فرض");
-  if (d.parValue !== undefined) patch.parValue = assertPositiveInt(d.parValue, "ارزش کامل سهم");
+  if (d.parValue !== undefined) patch.parValue = assertPositiveInt(d.parValue, "حداقل پس‌انداز هر سهم");
+  if (d.loanPerShare !== undefined) patch.loanPerShare = assertPositiveInt(d.loanPerShare, "سقف وام هر سهم");
   if (Object.keys(patch).length === 0) {
     throw new HttpsError("invalid-argument", "هیچ تنظیمی برای به‌روزرسانی ارسال نشده است.");
   }
