@@ -17,6 +17,8 @@ export interface LoanView {
   status: "active" | "repaid";
   issuedAt: number | null;
   pct: number; // repaid %
+  bankTxnId: string | null;
+  note: string | null;
 }
 
 /** Loan repaid %. outstanding is authoritative (decremented by amount, not count). */
@@ -28,6 +30,8 @@ export function deriveLoan(l: {
   outstanding: number;
   status: "active" | "repaid";
   issuedAt?: number | null;
+  bankTxnId?: string | null;
+  note?: string | null;
 }): LoanView {
   return {
     id: l.id,
@@ -38,6 +42,8 @@ export function deriveLoan(l: {
     status: l.status,
     issuedAt: l.issuedAt ?? null,
     pct: pct(l.principal - l.outstanding, l.principal),
+    bankTxnId: l.bankTxnId ?? null,
+    note: l.note ?? null,
   };
 }
 

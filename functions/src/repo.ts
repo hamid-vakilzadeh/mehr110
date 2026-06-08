@@ -22,6 +22,8 @@ export interface ReceiptView {
   date: number | null;
   shareId: string | null;
   loanId: string | null;
+  bankTxnId: string | null;
+  note: string | null;
 }
 
 export interface MemberView extends MemberDerived {
@@ -92,6 +94,8 @@ export async function loadMember(
       outstanding: l.outstanding,
       status: l.status,
       issuedAt: ms(l.issuedAt),
+      bankTxnId: (l.bankTxnId as string | null) ?? null,
+      note: (l.note as string | null) ?? null,
     });
   }
 
@@ -105,6 +109,8 @@ export async function loadMember(
       date: ms(p.date),
       shareId: p.shareId ?? null,
       loanId: p.loanId ?? null,
+      bankTxnId: (p.bankTxnId as string | null) ?? null,
+      note: (p.note as string | null) ?? null,
     };
   });
 

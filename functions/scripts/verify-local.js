@@ -88,6 +88,7 @@ const fakeDb = {
     get: (ref) => ref.get(),
     set: (ref, data, opts) => ref.set(data, opts),
     update: (ref, data) => ref.update(data),
+    delete: (ref) => ref.delete(),
   }),
 };
 
@@ -120,19 +121,21 @@ const check = (name, cond, extra) =>
   check("needsAttention == count(behind)", f.kpis.needsAttention === f.members.filter((m) => m.behind).length);
   check("totalShares == Σ nShares", f.kpis.totalShares === f.members.reduce((t, m) => t + m.nShares, 0));
 
-  let shareBad = 0, eligBad = 0, seedBad = 0;
+  // model is "shares as a COUNT" + a single authoritative savings — verify the
+  // derived fields against that (the old per-share-array checks were obsolete).
+  let derBad = 0, eligBad = 0;
+  const lps = f.settings.loanPerShare;
   for (const m of f.members) {
-    if (m.shares.reduce((t, s) => t + s.balance, 0) !== m.seedBalance) seedBad++;
-    for (const s of m.shares) {
-      if (s.funded !== (s.balance >= par)) shareBad++;
-      if (s.fundedPct !== Math.min(100, Math.round((s.balance / par) * 100))) shareBad++;
-      if (s.loanEligible !== (s.balance >= par)) shareBad++;
-    }
-    if (m.loanEligible !== (m.shares.filter((s) => s.balance >= par).length >= 1)) eligBad++;
+    const fundedShares = par > 0 ? Math.min(m.nShares, Math.floor(m.savings / par)) : 0;
+    if (m.fundedShares !== fundedShares) derBad++;
+    if (m.maxLoan !== fundedShares * lps) derBad++;
+    if (m.seedBalance !== m.savings) derBad++;
+    const wantPct = m.fullTarget > 0 ? Math.min(100, Math.max(0, Math.round((m.savings / m.fullTarget) * 100))) : 0;
+    if (m.fundedPct !== wantPct) derBad++;
+    if (m.loanEligible !== (fundedShares >= 1)) eligBad++;
   }
-  check("per-share funded/fundedPct/loanEligible correct", shareBad === 0, { shareBad });
-  check("member.seedBalance == Σ share.balance", seedBad === 0, { seedBad });
-  check("member.loanEligible == (>=1 funded share)", eligBad === 0, { eligBad });
+  check("fundedShares/maxLoan/fundedPct/seedBalance correct", derBad === 0, { derBad });
+  check("member.loanEligible == (fundedShares >= 1)", eligBad === 0, { eligBad });
 
   const loaners = f.members.filter((m) => m.loan);
   check("there ARE active loans seeded", loaners.length === 5, loaners.length);
@@ -158,7 +161,64 @@ const check = (name, cond, extra) =>
   check("loanNext == first un-received in order", f.loanNextId === firstUnreceived);
   check("loanReceivedCount correct", f.loanReceivedCount === f.loanOrderIds.filter((id) => byId[id].loanReceived).length);
   check("parNext == par + membershipFee", f.settings.parNext === par + f.settings.membershipFee);
-  check("purchasing all have an under-funded share", f.purchasingIds.every((id) => byId[id].shares.some((s) => s.balance < par)));
+  check("purchasing all still funding (savings < fullTarget)", f.purchasingIds.every((id) => byId[id].savings < byId[id].fullTarget));
+
+  // ============================================================
+  //  MUTATIONS — exercise the real callables against the fake db.
+  //  Tests bankTxnId uniqueness, edit-amount balance re-adjustment, hard
+  //  delete reversal, and loan edit/delete cascade. v2 onCall exposes .run().
+  // ============================================================
+  console.log("Mutations (record / edit / delete + bankTxnId uniqueness):");
+  const idx = require(path.join(lib, "index.js"));
+  const auth = { uid: "admin-test", token: { role: "admin", name: "تست", email: "t@example.com" } };
+  const run = (fn, data) => fn.run({ data, auth, rawRequest: {} });
+  const savingsOf = (id) => Number(store.get("members/" + id)?.savings);
+  const outstandingOf = (mid, lid) => Number(store.get(`members/${mid}/loan/${lid}`)?.outstanding);
+  const bankCount = () => childDocs("bankTxns").length;
+  const willThrow = async (p) => { try { await p; return false; } catch (e) { return true; } };
+
+  const { id: mid } = await run(idx.membersCreate, { firstName: "آزمون", lastName: "تراکنش", initialShares: 2 });
+  check("created test member", !!mid);
+
+  // -- seed payments + bankTxnId uniqueness --
+  const s1 = await run(idx.paymentsRecordSeed, { memberId: mid, amount: 10000, bankTxnId: "TRX-1" });
+  check("seed #1 → savings 10000", savingsOf(mid) === 10000, savingsOf(mid));
+  check("seed #1 issued a paymentId", !!s1.paymentId);
+  check("duplicate bankTxnId rejected", await willThrow(run(idx.paymentsRecordSeed, { memberId: mid, amount: 5000, bankTxnId: "TRX-1" })));
+  check("savings unchanged after rejected dup", savingsOf(mid) === 10000, savingsOf(mid));
+  const s2 = await run(idx.paymentsRecordSeed, { memberId: mid, amount: 5000, bankTxnId: "TRX-2" });
+  check("seed #2 → savings 15000", savingsOf(mid) === 15000, savingsOf(mid));
+  check("two bankTxn index docs", bankCount() === 2, bankCount());
+
+  // -- edit seed amount re-adjusts savings --
+  await run(idx.paymentsUpdate, { memberId: mid, paymentId: s1.paymentId, amount: 12000 });
+  check("edit seed +2000 → savings 17000", savingsOf(mid) === 17000, savingsOf(mid));
+  check("edit to existing bankTxnId rejected", await willThrow(run(idx.paymentsUpdate, { memberId: mid, paymentId: s1.paymentId, bankTxnId: "TRX-2" })));
+  await run(idx.paymentsUpdate, { memberId: mid, paymentId: s1.paymentId, bankTxnId: "TRX-9", note: "اصلاح" });
+  check("bankTxn re-pointed (TRX-1 released, TRX-9 claimed)", !store.has("bankTxns/TRX-1") && store.has("bankTxns/TRX-9"));
+
+  // -- delete seed reverses savings --
+  await run(idx.paymentsDelete, { memberId: mid, paymentId: s2.paymentId });
+  check("delete seed #2 → savings 12000", savingsOf(mid) === 12000, savingsOf(mid));
+  check("TRX-2 index released on delete", !store.has("bankTxns/TRX-2"));
+
+  // -- loans: issue / installment / edit / delete --
+  const loan = await run(idx.loansIssue, { memberId: mid, principal: 6000, termMonths: 6, bankTxnId: "LOAN-1" });
+  check("loan issued (eligible path)", !!loan.loanId && outstandingOf(mid, loan.loanId) === 6000, loan);
+  check("member.loanReceived set true", store.get("members/" + mid)?.loanReceived === true);
+  const i1 = await run(idx.paymentsRecordInstallment, { memberId: mid, loanId: loan.loanId, amount: 2000, bankTxnId: "INST-1" });
+  check("installment 2000 → outstanding 4000", outstandingOf(mid, loan.loanId) === 4000, outstandingOf(mid, loan.loanId));
+  await run(idx.loansUpdate, { memberId: mid, loanId: loan.loanId, principal: 8000 });
+  check("loan principal +2000 → outstanding 6000", outstandingOf(mid, loan.loanId) === 6000, outstandingOf(mid, loan.loanId));
+  await run(idx.paymentsUpdate, { memberId: mid, paymentId: i1.paymentId, amount: 3000 });
+  check("edit installment +1000 → outstanding 5000", outstandingOf(mid, loan.loanId) === 5000, outstandingOf(mid, loan.loanId));
+  await run(idx.paymentsDelete, { memberId: mid, paymentId: i1.paymentId });
+  check("delete installment → outstanding back to 8000", outstandingOf(mid, loan.loanId) === 8000, outstandingOf(mid, loan.loanId));
+  const del = await run(idx.loansDelete, { memberId: mid, loanId: loan.loanId });
+  check("loan deleted (doc gone)", !store.has(`members/${mid}/loan/${loan.loanId}`));
+  check("member.loanReceived reset false", store.get("members/" + mid)?.loanReceived === false);
+  check("LOAN-1 index released", !store.has("bankTxns/LOAN-1"));
+  check("savings untouched by loan delete", savingsOf(mid) === 12000, savingsOf(mid));
 
   console.log(failures === 0 ? "\nALL INVARIANTS PASS ✓" : `\n${failures} INVARIANT(S) FAILED ✗`);
   process.exit(failures === 0 ? 0 : 1);

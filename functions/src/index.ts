@@ -36,6 +36,18 @@ const str = (v: unknown, label: string, max = 120): string => {
 };
 const optStr = (v: unknown, max = 120): string | null =>
   v == null || v === "" ? null : String(v).slice(0, max);
+/** Optional, trimmed bank-transaction reference (or null). */
+const optBankTxn = (v: unknown): string | null => {
+  if (v == null || v === "") return null;
+  const s = String(v).trim();
+  return s ? s.slice(0, 120) : null;
+};
+/** Optional, trimmed free-text note (or null). */
+const optNote = (v: unknown): string | null => {
+  if (v == null || v === "") return null;
+  const s = String(v).trim();
+  return s ? s.slice(0, 500) : null;
+};
 const strArray = (v: unknown, max = 30): string[] =>
   Array.isArray(v) ? v.map((x) => String(x).slice(0, 120)).filter(Boolean).slice(0, max) : [];
 const toTs = (v: unknown): Timestamp =>
@@ -61,6 +73,33 @@ async function allocReceiptNo(
   const snap = await tx.get(ref);
   const next = ((snap.data()?.lastReceiptNo as number) || 10000) + 1;
   return { no: String(next), commit: () => tx.update(ref, { lastReceiptNo: next }) };
+}
+
+/** Firestore doc id for a bank-transaction reference (the id is a free-text bank
+ *  ref, so percent-encode it to a safe single-segment key). */
+const bankKey = (bankTxnId: string): string => encodeURIComponent(bankTxnId);
+
+/** Reserve a bankTxnId for fund-wide uniqueness inside a transaction.
+ *  Reads the index doc now (read phase) and returns a `commit()` to claim it in
+ *  the write phase. Throws if the id is already used. No-op when bankTxnId is null. */
+async function reserveBankTxn(
+  tx: FirebaseFirestore.Transaction,
+  bankTxnId: string | null,
+  meta: Record<string, unknown>
+): Promise<() => void> {
+  if (!bankTxnId) return () => {};
+  const ref = db.collection(COL.bankTxns).doc(bankKey(bankTxnId));
+  const snap = await tx.get(ref);
+  if (snap.exists) {
+    throw new HttpsError("already-exists", "این شناسهٔ تراکنش بانکی قبلاً ثبت شده است.");
+  }
+  return () => tx.set(ref, { bankTxnId, ...meta, at: FieldValue.serverTimestamp() });
+}
+
+/** Release a bankTxnId index entry (write phase). No-op when null. */
+function releaseBankTxn(tx: FirebaseFirestore.Transaction, bankTxnId: string | null): void {
+  if (!bankTxnId) return;
+  tx.delete(db.collection(COL.bankTxns).doc(bankKey(bankTxnId)));
 }
 
 /** Current Jalali year*12+(month-1), in Asia/Tehran (authoritative month boundary). */
@@ -291,20 +330,26 @@ export const paymentsRecordSeed = onCall(async (req) => {
   const memberId = str(d.memberId, "memberId");
   const amount = assertPositiveInt(d.amount, "مبلغ");
   const date = toTs(d.date);
+  const bankTxnId = optBankTxn(d.bankTxnId);
+  const note = optNote(d.note);
 
   const memberRef = db.collection(COL.members).doc(memberId);
   const out = await db.runTransaction(async (tx) => {
     // --- READS first ---
     const snap = await tx.get(memberRef);
     const receipt = await allocReceiptNo(tx);
+    const reserve = await reserveBankTxn(tx, bankTxnId, { kind: "seed", memberId });
     if (!snap.exists) throw new HttpsError("not-found", "عضو یافت نشد.");
     const savings = (Number(snap.data()?.savings) || 0) + amount; // authoritative total
     // --- WRITES ---
     tx.update(memberRef, { savings });
     receipt.commit();
     const pRef = memberRef.collection(COL.payments).doc();
-    tx.set(pRef, { type: "seed", shareId: null, loanId: null, no: receipt.no, amount, date, ...rec(req) });
-    return { savings, no: receipt.no };
+    tx.set(pRef, {
+      type: "seed", shareId: null, loanId: null, no: receipt.no, amount, date, bankTxnId, note, ...rec(req),
+    });
+    reserve();
+    return { savings, no: receipt.no, paymentId: pRef.id };
   });
 
   await refreshBehind(memberId);
@@ -313,6 +358,7 @@ export const paymentsRecordSeed = onCall(async (req) => {
     ok: true,
     savings: out.savings,
     receiptNo: out.no,
+    paymentId: out.paymentId,
     eligible: out.savings >= cfg.parValue,
   };
 });
@@ -324,12 +370,15 @@ export const paymentsRecordInstallment = onCall(async (req) => {
   const loanId = str(d.loanId, "loanId");
   const amount = assertPositiveInt(d.amount, "مبلغ");
   const date = toTs(d.date);
+  const bankTxnId = optBankTxn(d.bankTxnId);
+  const note = optNote(d.note);
 
   const loanRef = db.collection(COL.members).doc(memberId).collection(COL.loan).doc(loanId);
   const out = await db.runTransaction(async (tx) => {
     // --- READS first ---
     const snap = await tx.get(loanRef);
     const receipt = await allocReceiptNo(tx);
+    const reserve = await reserveBankTxn(tx, bankTxnId, { kind: "installment", memberId, loanId });
     if (!snap.exists) throw new HttpsError("not-found", "وام یافت نشد.");
     const outstanding = (snap.data()?.outstanding as number) || 0;
     const newOutstanding = Math.max(0, outstanding - amount); // authoritative
@@ -338,10 +387,19 @@ export const paymentsRecordInstallment = onCall(async (req) => {
     tx.update(loanRef, { outstanding: newOutstanding, status });
     receipt.commit();
     const pRef = db.collection(COL.members).doc(memberId).collection(COL.payments).doc();
-    tx.set(pRef, { type: "installment", shareId: null, loanId, no: receipt.no, amount, date, ...rec(req) });
-    return { newOutstanding, status, no: receipt.no };
+    tx.set(pRef, {
+      type: "installment", shareId: null, loanId, no: receipt.no, amount, date, bankTxnId, note, ...rec(req),
+    });
+    reserve();
+    return { newOutstanding, status, no: receipt.no, paymentId: pRef.id };
   });
-  return { ok: true, outstanding: out.newOutstanding, status: out.status, receiptNo: out.no };
+  return {
+    ok: true,
+    outstanding: out.newOutstanding,
+    status: out.status,
+    receiptNo: out.no,
+    paymentId: out.paymentId,
+  };
 });
 
 export const paymentsList = onCall(async (req) => {
@@ -351,6 +409,140 @@ export const paymentsList = onCall(async (req) => {
   const m = await loadMember(memberId, cfg.parValue, cfg.loanPerShare);
   if (!m) throw new HttpsError("not-found", "عضو یافت نشد.");
   return { seed: m.seedReceipts, installments: m.installmentReceipts };
+});
+
+/** Edit an existing payment. Changing `amount` atomically re-adjusts the
+ *  authoritative balance by the delta (member.savings for a seed payment;
+ *  loan.outstanding for an installment). `type` is NOT editable — to move money
+ *  between savings and a loan, delete and re-record. */
+export const paymentsUpdate = onCall(async (req) => {
+  requireAdmin(req);
+  const d = req.data ?? {};
+  const memberId = str(d.memberId, "memberId");
+  const paymentId = str(d.paymentId, "paymentId");
+
+  const hasAmount = d.amount !== undefined;
+  const newAmount = hasAmount ? assertPositiveInt(d.amount, "مبلغ") : null;
+  const hasDate = d.date !== undefined;
+  const newDate = hasDate ? toTs(d.date) : null;
+  const hasBank = d.bankTxnId !== undefined;
+  const newBank = hasBank ? optBankTxn(d.bankTxnId) : undefined;
+  const hasNote = d.note !== undefined;
+  const newNote = hasNote ? optNote(d.note) : undefined;
+  if (!hasAmount && !hasDate && !hasBank && !hasNote) {
+    throw new HttpsError("invalid-argument", "هیچ فیلدی برای ویرایش ارسال نشده است.");
+  }
+
+  const memberRef = db.collection(COL.members).doc(memberId);
+  const payRef = memberRef.collection(COL.payments).doc(paymentId);
+
+  const out = await db.runTransaction(async (tx) => {
+    // --- READS first ---
+    const paySnap = await tx.get(payRef);
+    if (!paySnap.exists) throw new HttpsError("not-found", "تراکنش یافت نشد.");
+    const pay = paySnap.data() as Record<string, unknown>;
+    const oldAmount = Number(pay.amount) || 0;
+    const oldBank = (pay.bankTxnId as string | null) ?? null;
+
+    // bank-txn uniqueness: only when changing to a different value
+    let reserve: () => void = () => {};
+    let releaseOld = false;
+    if (hasBank && newBank !== oldBank) {
+      if (newBank) reserve = await reserveBankTxn(tx, newBank, { kind: pay.type, memberId, paymentId });
+      if (oldBank) releaseOld = true;
+    }
+
+    let balanceUpdate: (() => void) | null = null;
+    let resultExtra: Record<string, unknown> = {};
+    if (hasAmount && newAmount !== oldAmount) {
+      const delta = newAmount! - oldAmount;
+      if (pay.type === "seed") {
+        const mSnap = await tx.get(memberRef);
+        if (!mSnap.exists) throw new HttpsError("not-found", "عضو یافت نشد.");
+        const newSavings = (Number(mSnap.data()?.savings) || 0) + delta;
+        if (newSavings < 0) throw new HttpsError("failed-precondition", "ویرایش باعث منفی‌شدن پس‌انداز می‌شود.");
+        balanceUpdate = () => tx.update(memberRef, { savings: newSavings });
+        resultExtra = { savings: newSavings };
+      } else {
+        const loanId = String(pay.loanId);
+        const loanRef = memberRef.collection(COL.loan).doc(loanId);
+        const lSnap = await tx.get(loanRef);
+        if (!lSnap.exists) throw new HttpsError("not-found", "وام یافت نشد.");
+        const principal = Number(lSnap.data()?.principal) || 0;
+        const newOutstanding = (Number(lSnap.data()?.outstanding) || 0) - delta; // paid more → less outstanding
+        if (newOutstanding < 0) throw new HttpsError("failed-precondition", "ویرایش باعث پرداخت بیش از ماندهٔ وام می‌شود.");
+        if (newOutstanding > principal) throw new HttpsError("failed-precondition", "ویرایش باعث افزایش مانده بیش از اصل وام می‌شود.");
+        const status = newOutstanding === 0 ? "repaid" : "active";
+        balanceUpdate = () => tx.update(loanRef, { outstanding: newOutstanding, status });
+        resultExtra = { outstanding: newOutstanding, status };
+      }
+    }
+
+    // --- WRITES ---
+    const patch: Record<string, unknown> = { ...rec(req) };
+    if (hasAmount) patch.amount = newAmount;
+    if (hasDate) patch.date = newDate;
+    if (hasBank) patch.bankTxnId = newBank ?? null;
+    if (hasNote) patch.note = newNote ?? null;
+    tx.update(payRef, patch);
+    if (balanceUpdate) balanceUpdate();
+    if (releaseOld) releaseBankTxn(tx, oldBank);
+    reserve();
+    return { type: pay.type as string, ...resultExtra };
+  });
+
+  if (out.type === "seed") await refreshBehind(memberId);
+  return { ok: true, paymentId, ...out };
+});
+
+/** Delete a payment, reversing its effect on the authoritative balance
+ *  (seed: savings -= amount; installment: loan.outstanding += amount, capped at principal). */
+export const paymentsDelete = onCall(async (req) => {
+  requireAdmin(req);
+  const memberId = str(req.data?.memberId, "memberId");
+  const paymentId = str(req.data?.paymentId, "paymentId");
+  const memberRef = db.collection(COL.members).doc(memberId);
+  const payRef = memberRef.collection(COL.payments).doc(paymentId);
+
+  const out = await db.runTransaction(async (tx) => {
+    // --- READS first ---
+    const paySnap = await tx.get(payRef);
+    if (!paySnap.exists) throw new HttpsError("not-found", "تراکنش یافت نشد.");
+    const pay = paySnap.data() as Record<string, unknown>;
+    const amount = Number(pay.amount) || 0;
+    const bankTxnId = (pay.bankTxnId as string | null) ?? null;
+
+    let balanceUpdate: (() => void) | null = null;
+    let resultExtra: Record<string, unknown> = {};
+    if (pay.type === "seed") {
+      const mSnap = await tx.get(memberRef);
+      if (!mSnap.exists) throw new HttpsError("not-found", "عضو یافت نشد.");
+      const newSavings = (Number(mSnap.data()?.savings) || 0) - amount;
+      if (newSavings < 0) throw new HttpsError("failed-precondition", "حذف باعث منفی‌شدن پس‌انداز می‌شود.");
+      balanceUpdate = () => tx.update(memberRef, { savings: newSavings });
+      resultExtra = { savings: newSavings };
+    } else {
+      const loanId = String(pay.loanId);
+      const loanRef = memberRef.collection(COL.loan).doc(loanId);
+      const lSnap = await tx.get(loanRef);
+      if (lSnap.exists) {
+        const principal = Number(lSnap.data()?.principal) || 0;
+        const restored = Math.min(principal, (Number(lSnap.data()?.outstanding) || 0) + amount);
+        const status = restored === 0 ? "repaid" : "active";
+        balanceUpdate = () => tx.update(loanRef, { outstanding: restored, status });
+        resultExtra = { outstanding: restored, status };
+      }
+    }
+
+    // --- WRITES ---
+    if (balanceUpdate) balanceUpdate();
+    releaseBankTxn(tx, bankTxnId);
+    tx.delete(payRef);
+    return { type: pay.type as string, ...resultExtra };
+  });
+
+  if (out.type === "seed") await refreshBehind(memberId);
+  return { ok: true, paymentId, ...out };
 });
 
 // ============================================================
@@ -369,6 +561,8 @@ export const loansIssue = onCall(async (req) => {
   const installmentsPaid = Math.max(0, Math.min(termMonths, Math.floor(Number(d.installmentsPaid) || 0)));
   const existing = !!d.existing; // recording a pre-existing (off-app) loan
   const issuedAt = optTs(d.issuedAt);
+  const bankTxnId = optBankTxn(d.bankTxnId);
+  const note = optNote(d.note);
 
   // outstanding is authoritative; derived once here from principal − paid·monthly
   const outstanding = Math.max(0, principal - installmentsPaid * monthly);
@@ -412,17 +606,24 @@ export const loansIssue = onCall(async (req) => {
 
   const status = outstanding === 0 ? "repaid" : "active";
   const loanRef = db.collection(COL.members).doc(memberId).collection(COL.loan).doc();
-  await loanRef.set({
-    principal,
-    termMonths,
-    monthly,
-    outstanding, // authoritative — decremented by installments
-    status,
-    issuedAt: issuedAt ?? FieldValue.serverTimestamp(),
-    ...rec(req),
+  // one transaction so the bankTxnId uniqueness claim, the loan doc, and the
+  // member's loanReceived flag commit together.
+  await db.runTransaction(async (tx) => {
+    const reserve = await reserveBankTxn(tx, bankTxnId, { kind: "loan", memberId, loanId: loanRef.id });
+    tx.set(loanRef, {
+      principal,
+      termMonths,
+      monthly,
+      outstanding, // authoritative — decremented by installments
+      status,
+      issuedAt: issuedAt ?? FieldValue.serverTimestamp(),
+      bankTxnId,
+      note,
+      ...rec(req),
+    });
+    tx.update(db.collection(COL.members).doc(memberId), { loanReceived: true });
+    reserve();
   });
-  // receiving a loan = received in the current round
-  await db.collection(COL.members).doc(memberId).update({ loanReceived: true });
   return { ok: true, loanId: loanRef.id, outstanding, monthly, status };
 });
 
@@ -433,6 +634,107 @@ export const loansGet = onCall(async (req) => {
   const m = await loadMember(memberId, cfg.parValue, cfg.loanPerShare);
   if (!m) throw new HttpsError("not-found", "عضو یافت نشد.");
   return { loan: m.loan };
+});
+
+/** Edit a loan. Correcting `principal` shifts the authoritative `outstanding` by
+ *  the same delta (the installments paid so far are unchanged). `termMonths`/`monthly`
+ *  are display-only (monthly auto-recomputes from principal/term unless given). */
+export const loansUpdate = onCall(async (req) => {
+  requireAdmin(req);
+  const d = req.data ?? {};
+  const memberId = str(d.memberId, "memberId");
+  const loanId = str(d.loanId, "loanId");
+  const memberRef = db.collection(COL.members).doc(memberId);
+  const loanRef = memberRef.collection(COL.loan).doc(loanId);
+
+  const hasPrincipal = d.principal !== undefined;
+  const newPrincipal = hasPrincipal ? assertPositiveInt(d.principal, "اصل وام") : null;
+  const hasTerm = d.termMonths !== undefined;
+  const newTerm = hasTerm ? assertPositiveInt(d.termMonths, "مدت (ماه)") : null;
+  const hasMonthly = d.monthly !== undefined;
+  const newMonthly = hasMonthly ? assertPositiveInt(d.monthly, "قسط ماهانه") : null;
+  const hasDate = d.issuedAt !== undefined;
+  const newDate = hasDate ? toTs(d.issuedAt) : null;
+  const hasBank = d.bankTxnId !== undefined;
+  const newBank = hasBank ? optBankTxn(d.bankTxnId) : undefined;
+  const hasNote = d.note !== undefined;
+  const newNote = hasNote ? optNote(d.note) : undefined;
+  if (![hasPrincipal, hasTerm, hasMonthly, hasDate, hasBank, hasNote].some(Boolean)) {
+    throw new HttpsError("invalid-argument", "هیچ فیلدی برای ویرایش ارسال نشده است.");
+  }
+
+  const out = await db.runTransaction(async (tx) => {
+    // --- READS first ---
+    const lSnap = await tx.get(loanRef);
+    if (!lSnap.exists) throw new HttpsError("not-found", "وام یافت نشد.");
+    const l = lSnap.data() as Record<string, unknown>;
+    const oldPrincipal = Number(l.principal) || 0;
+    const oldOutstanding = Number(l.outstanding) || 0;
+    const oldTerm = Number(l.termMonths) || 1;
+    const oldBank = (l.bankTxnId as string | null) ?? null;
+
+    let reserve: () => void = () => {};
+    let releaseOld = false;
+    if (hasBank && newBank !== oldBank) {
+      if (newBank) reserve = await reserveBankTxn(tx, newBank, { kind: "loan", memberId, loanId });
+      if (oldBank) releaseOld = true;
+    }
+
+    // --- WRITES ---
+    const patch: Record<string, unknown> = { ...rec(req) };
+    let principal = oldPrincipal;
+    let outstanding = oldOutstanding;
+    if (hasPrincipal && newPrincipal !== oldPrincipal) {
+      principal = newPrincipal!;
+      outstanding = oldOutstanding + (newPrincipal! - oldPrincipal);
+      if (outstanding < 0) throw new HttpsError("failed-precondition", "ویرایش باعث منفی‌شدن ماندهٔ وام می‌شود.");
+      patch.principal = principal;
+      patch.outstanding = outstanding;
+      patch.status = outstanding === 0 ? "repaid" : "active";
+    }
+    if (hasTerm) patch.termMonths = newTerm;
+    if (hasMonthly) patch.monthly = newMonthly;
+    else if (hasTerm || hasPrincipal) patch.monthly = monthlyOf(principal, newTerm ?? oldTerm);
+    if (hasDate) patch.issuedAt = newDate;
+    if (hasBank) patch.bankTxnId = newBank ?? null;
+    if (hasNote) patch.note = newNote ?? null;
+
+    tx.update(loanRef, patch);
+    if (releaseOld) releaseBankTxn(tx, oldBank);
+    reserve();
+    return { principal, outstanding, status: outstanding === 0 ? "repaid" : "active" };
+  });
+  return { ok: true, loanId, ...out };
+});
+
+/** Delete a loan and all its installment payments (cascade), releasing their
+ *  bankTxnId reservations and clearing the member's loanReceived flag. Member
+ *  savings are untouched (installments only ever moved loan.outstanding). */
+export const loansDelete = onCall(async (req) => {
+  requireAdmin(req);
+  const memberId = str(req.data?.memberId, "memberId");
+  const loanId = str(req.data?.loanId, "loanId");
+  const memberRef = db.collection(COL.members).doc(memberId);
+  const loanRef = memberRef.collection(COL.loan).doc(loanId);
+
+  const loanSnap = await loanRef.get();
+  if (!loanSnap.exists) throw new HttpsError("not-found", "وام یافت نشد.");
+  const loanBank = (loanSnap.data()?.bankTxnId as string | null) ?? null;
+
+  // installment receipts tied to this loan (cascade)
+  const insts = await memberRef.collection(COL.payments).where("loanId", "==", loanId).get();
+
+  const batch = db.batch();
+  batch.delete(loanRef);
+  if (loanBank) batch.delete(db.collection(COL.bankTxns).doc(bankKey(loanBank)));
+  insts.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+    const b = (doc.data()?.bankTxnId as string | null) ?? null;
+    if (b) batch.delete(db.collection(COL.bankTxns).doc(bankKey(b)));
+  });
+  batch.update(memberRef, { loanReceived: false, ...rec(req) });
+  await batch.commit();
+  return { ok: true, loanId, deletedInstallments: insts.size };
 });
 
 // ============================================================

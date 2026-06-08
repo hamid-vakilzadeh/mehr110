@@ -41,6 +41,8 @@ export interface LoanDoc {
   outstanding: number;
   status: LoanStatus;
   issuedAt: Timestamp;
+  bankTxnId: string | null; // bank transfer reference for the disbursement (optional; fund-wide unique)
+  note: string | null; // free-text note (optional)
 }
 
 /** members/{memberId}/payments/{paymentId} — ledger of receipts */
@@ -51,6 +53,8 @@ export interface PaymentDoc {
   no: string; // human receipt number
   amount: number;
   date: Timestamp;
+  bankTxnId: string | null; // bank transfer reference (optional; fund-wide unique)
+  note: string | null; // free-text note (optional)
 }
 
 /** fund/config — single settings doc, INFORMATIONAL only */
@@ -77,6 +81,7 @@ export const COL = {
   loan: "loan",
   payments: "payments",
   fund: "fund",
+  bankTxns: "bankTxns", // top-level uniqueness index: doc id = encoded bankTxnId
 } as const;
 
 export const FUND_DOC = { config: "config", loanRotation: "loanRotation" } as const;
