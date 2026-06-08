@@ -64,7 +64,6 @@ function App() {
           <img src="logo.png" alt="صندوق مهر۱۱۰" width={52} height={52} style={{ borderRadius: 14, display: 'block', flex: 'none', boxShadow: '0 1px 3px oklch(0.4 0.02 70 / 0.12)' }} />
           <div>
             <h1 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 27, color: 'var(--ink)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>صندوق مهر۱۱۰</h1>
-            <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 3 }}>حلقهٔ پس‌انداز و وام خانوادگی</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
