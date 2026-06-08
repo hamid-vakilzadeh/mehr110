@@ -106,6 +106,19 @@ function ShareDetail({ m }) {
   );
 }
 
+/* per-member quick actions (preselect the member on the record pages) */
+function MemberActions({ m }) {
+  const base = { display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 13px', borderRadius: 9, fontSize: 13, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' };
+  const ghost = { ...base, background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--hair)' };
+  return (
+    <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--hair-2)', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <a href={`record-payment.html?m=${m.id}`} style={{ ...base, background: 'var(--accent)', color: 'var(--surface)' }}><Icon name="check" size={15} stroke={2} /> ثبت پرداخت</a>
+      <a href={`record-loan.html?m=${m.id}`} style={ghost}><Icon name="coins" size={15} stroke={1.7} /> ثبت وام</a>
+      <a href={`statement.html?m=${m.id}`} style={ghost}><Icon name="arrowR" size={15} stroke={1.8} style={{ transform: 'scaleX(-1)' }} /> صورت‌حساب</a>
+    </div>
+  );
+}
+
 function MemberCards({ rows, open, setOpen, onClear, noMembers }) {
   if (rows.length === 0) {
     return (
@@ -157,11 +170,7 @@ function MemberCards({ rows, open, setOpen, onClear, noMembers }) {
             {isOpen && (
               <div style={{ borderTop: '1px solid var(--hair)', background: 'var(--surface-2)', padding: '14px 16px' }}>
                 <ShareDetail m={m} />
-                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--hair-2)' }}>
-                  <a href={`statement.html?m=${m.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none' }}>
-                    مشاهدهٔ صورت‌حساب عضو <Icon name="arrowR" size={15} stroke={1.8} style={{ transform: 'scaleX(-1)' }} />
-                  </a>
-                </div>
+                <MemberActions m={m} />
               </div>
             )}
           </div>
@@ -335,14 +344,7 @@ function MembersTable({ fund, isMobile }) {
                     <tr style={{ borderBottom: '1px solid var(--hair)', background: 'var(--surface-2)' }}>
                       <td colSpan={7} style={{ padding: '4px 38px 20px 22px' }}>
                         <ShareDetail m={m} />
-                        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--hair-2)' }}>
-                          <a href={`statement.html?m=${m.id}`} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600,
-                            color: 'var(--accent)', textDecoration: 'none',
-                          }}>
-                            مشاهدهٔ صورت‌حساب عضو <Icon name="arrowR" size={15} stroke={1.8} style={{ transform: 'scaleX(-1)' }} />
-                          </a>
-                        </div>
+                        <MemberActions m={m} />
                       </td>
                     </tr>
                   )}

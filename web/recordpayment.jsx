@@ -77,7 +77,9 @@ function RecordPayment() {
   const FEE = fund.settings.membershipFee;
   const PAR = fund.settings.parValue;
 
-  const defId = (fund.purchasing[0] || actives[0]).id;
+  const paramM = new URLSearchParams(location.search).get('m');
+  const preset = paramM && actives.find((m) => m.id === paramM);
+  const defId = (preset || fund.purchasing[0] || actives[0]).id;
   const [memberId, setMemberId] = React.useState(defId);
   const member = fund.members.find((m) => m.id === memberId) || actives[0];
   const hasLoan = !!member.loan;

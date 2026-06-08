@@ -282,11 +282,14 @@ function Statement() {
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px 64px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <a href="dashboard.html" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--ink-3)', textDecoration: 'none' }}>
           <Icon name="arrowR" size={15} stroke={1.8} /> داشبورد
         </a>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => window.print()} title="چاپ یا ذخیره به‌صورت PDF" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 13px', borderRadius: 9, border: 'none', background: 'var(--accent)', cursor: 'pointer', font: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--surface)', whiteSpace: 'nowrap' }}>
+            <Icon name="download" size={14} stroke={1.9} /> چاپ / PDF
+          </button>
           <a href={`add-member.html?edit=${m.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 13px', borderRadius: 9, border: '1px solid var(--hair)', background: 'var(--surface)', textDecoration: 'none', fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap' }}>
             <Icon name="edit" size={14} stroke={1.8} /> ویرایش
           </a>

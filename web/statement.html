@@ -18,6 +18,11 @@
 <script src="auth.js"></script>
 <style>
   a:hover { opacity: 0.88; }
+  @media print {
+    .no-print { display: none !important; }
+    html, body { background: #fff !important; }
+    @page { margin: 14mm; }
+  }
 </style>
 </head>
 <body>

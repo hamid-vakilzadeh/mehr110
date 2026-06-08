@@ -72,7 +72,9 @@ function RecordLoan() {
   }
 
   const isMobile = useIsMobile();
-  const [memberId, setMemberId] = React.useState(actives[0].id);
+  const paramM = new URLSearchParams(location.search).get('m');
+  const presetM = (paramM && actives.find((m) => m.id === paramM)) || actives[0];
+  const [memberId, setMemberId] = React.useState(presetM.id);
   const member = fund.members.find((m) => m.id === memberId) || actives[0];
 
   const [principal, setPrincipal] = React.useState('');
