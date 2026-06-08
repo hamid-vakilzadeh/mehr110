@@ -105,8 +105,8 @@
         // UI expects referredBy to be a display NAME (or null); keep id separately
         referredBy: m.referredByName || null,
         referredById: m.referredBy || null,
-        seedReceipts: (m.seedReceipts || []).map(function (r) { return Object.assign({}, r, { date: fullDateLabel(r.date) }); }),
-        installmentReceipts: (m.installmentReceipts || []).map(function (r) { return Object.assign({}, r, { date: fullDateLabel(r.date) }); }),
+        seedReceipts: (m.seedReceipts || []).map(function (r) { return Object.assign({}, r, { dateMs: r.date, date: fullDateLabel(r.date) }); }),
+        installmentReceipts: (m.installmentReceipts || []).map(function (r) { return Object.assign({}, r, { dateMs: r.date, date: fullDateLabel(r.date) }); }),
       });
       if (m.loan) {
         enriched.loan = Object.assign({}, m.loan, { term: m.loan.termMonths, installmentsPaid: Math.round((m.loan.principal - m.loan.outstanding) / (m.loan.monthly || 1)) });
@@ -215,7 +215,11 @@
     addShare: function (d) { return call("sharesAdd", d); },
     recordSeed: function (d) { return call("paymentsRecordSeed", d); },
     recordInstallment: function (d) { return call("paymentsRecordInstallment", d); },
+    updatePayment: function (d) { return call("paymentsUpdate", d); },
+    deletePayment: function (d) { return call("paymentsDelete", d); },
     issueLoan: function (d) { return call("loansIssue", d); },
+    updateLoan: function (d) { return call("loansUpdate", d); },
+    deleteLoan: function (d) { return call("loansDelete", d); },
     reorderLoanOrder: function (order) { return call("loanOrderReorder", { order: order }); },
     markReceived: function (memberId, received) { return call("loanOrderMarkReceived", { memberId: memberId, received: received }); },
     startNewRound: function () { return call("loanOrderStartNewRound", {}); },

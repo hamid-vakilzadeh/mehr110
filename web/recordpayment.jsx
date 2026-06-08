@@ -88,6 +88,8 @@ function RecordPayment() {
   const [d, setD] = React.useState(today.d);
   const [mo, setMo] = React.useState(today.m);
   const [yr, setYr] = React.useState(today.y);
+  const [bankTxnId, setBankTxnId] = React.useState('');
+  const [note, setNote] = React.useState('');
   const [saved, setSaved] = React.useState(null);
 
   // keep the type valid for the selected member; set a sensible default amount
@@ -109,8 +111,9 @@ function RecordPayment() {
     if (window.API && window.API.live) {
       try {
         const date = window.API.jalaliToMs(yr, mo, d);
-        if (isLoan) await window.API.recordInstallment({ memberId, loanId: member.loan.id, amount: amt, date });
-        else await window.API.recordSeed({ memberId, amount: amt, date });
+        const extra = { bankTxnId: bankTxnId.trim() || undefined, note: note.trim() || undefined };
+        if (isLoan) await window.API.recordInstallment({ memberId, loanId: member.loan.id, amount: amt, date, ...extra });
+        else await window.API.recordSeed({ memberId, amount: amt, date, ...extra });
       } catch (e) { alert('خطا در ثبت پرداخت: ' + (e && e.message ? e.message : e)); return; }
     }
     setSaved({ name: member.name, amount: amt, isLoan, oldVal, newVal, nowEligible, loanCleared, date: `${faDigits(d)} ${FA_MONTHS_RP[mo - 1]} ${faDigits(yr)}` });
@@ -214,6 +217,16 @@ function RecordPayment() {
                 {Array.from({ length: 3 }, (_, i) => today.y - i).map((y) => <option key={y} value={y}>{faDigits(y)}</option>)}
               </RPSelect>
             </div>
+          </FieldRP>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14 }}>
+          <FieldRP label="شناسهٔ تراکنش بانکی (اختیاری)" hint="برای جلوگیری از ثبت تکراری همان واریز">
+            <input value={bankTxnId} onChange={(e) => setBankTxnId(e.target.value)} className="mono"
+              style={{ ...rpInput, direction: 'ltr', textAlign: 'left' }} />
+          </FieldRP>
+          <FieldRP label="یادداشت (اختیاری)">
+            <input value={note} onChange={(e) => setNote(e.target.value)} style={rpInput} />
           </FieldRP>
         </div>
 

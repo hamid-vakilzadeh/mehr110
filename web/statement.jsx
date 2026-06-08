@@ -26,9 +26,166 @@ function Card({ title, icon, accent, children, right }) {
   );
 }
 
-/* expandable receipts table */
-function Receipts({ title, rows }) {
+/* ---- shared edit/delete helpers (admin) ---- */
+const FA_MONTHS_ST = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+function msToJalali(ms) {
+  const parts = new Intl.DateTimeFormat('en-US-u-ca-persian', { day: 'numeric', month: 'numeric', year: 'numeric', numberingSystem: 'latn' }).formatToParts(new Date(Number(ms) || Date.now()));
+  const g = (t) => Number(parts.find((p) => p.type === t).value);
+  return { y: g('year'), m: g('month'), d: g('day') };
+}
+const stInput = {
+  height: 40, padding: '0 12px', borderRadius: 9, border: '1px solid var(--hair)',
+  background: 'var(--surface)', font: 'inherit', fontFamily: 'var(--sans)', fontSize: 13.5, color: 'var(--ink)', width: '100%',
+};
+function StSelect({ value, onChange, children }) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...stInput, padding: '0 12px 0 30px', cursor: 'pointer', appearance: 'none' }}>{children}</select>
+      <Icon name="chevron" size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)', pointerEvents: 'none' }} />
+    </div>
+  );
+}
+function StField({ label, children }) {
+  return <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}><span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>{label}</span>{children}</label>;
+}
+function JDate({ y, m, d, setY, setM, setD }) {
+  const ty = msToJalali(Date.now()).y;
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 1.2fr', gap: 8 }}>
+      <StSelect value={d} onChange={(v) => setD(Number(v))}>{Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{faDigits(i + 1)}</option>)}</StSelect>
+      <StSelect value={m} onChange={(v) => setM(Number(v))}>{FA_MONTHS_ST.map((mm, i) => <option key={i} value={i + 1}>{mm}</option>)}</StSelect>
+      <StSelect value={y} onChange={(v) => setY(Number(v))}>{Array.from({ length: 30 }, (_, i) => ty - i).map((yy) => <option key={yy} value={yy}>{faDigits(yy)}</option>)}</StSelect>
+    </div>
+  );
+}
+function Modal({ children, onClose, maxWidth = 440 }) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'oklch(0.2 0.01 65 / 0.45)', display: 'grid', placeItems: 'center', padding: 20, zIndex: 50 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', padding: '24px 26px', maxWidth, width: '100%', boxShadow: 'var(--shadow)', maxHeight: '90vh', overflowY: 'auto' }}>{children}</div>
+    </div>
+  );
+}
+const btnGhost = { height: 42, padding: '0 18px', borderRadius: 10, background: 'var(--surface)', color: 'var(--ink-2)', border: '1px solid var(--hair)', cursor: 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600 };
+const btnWarn = { height: 42, padding: '0 20px', borderRadius: 10, background: 'var(--warn)', color: 'var(--surface)', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7 };
+const btnAccent = { height: 42, padding: '0 20px', borderRadius: 10, background: 'var(--accent)', color: 'var(--surface)', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7 };
+
+/* generic delete confirmation */
+function ConfirmDelete({ title, body, confirmLabel, onCancel, onConfirm }) {
+  const [busy, setBusy] = React.useState(false);
+  return (
+    <Modal onClose={busy ? () => {} : onCancel}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--warn-soft)', color: 'var(--warn)', display: 'grid', placeItems: 'center', flex: 'none' }}><Icon name="trash" size={20} stroke={1.8} /></div>
+        <h3 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 19, color: 'var(--ink)' }}>{title}</h3>
+      </div>
+      <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.7 }}>{body}</p>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <button disabled={busy} onClick={onCancel} style={btnGhost}>انصراف</button>
+        <button disabled={busy} onClick={async () => {
+          setBusy(true);
+          try { await onConfirm(); }
+          catch (e) { setBusy(false); alert('خطا در حذف: ' + (e && e.message ? e.message : e)); }
+        }} style={{ ...btnWarn, opacity: busy ? 0.7 : 1 }}>
+          <Icon name="trash" size={16} stroke={1.9} /> {busy ? 'در حال حذف…' : confirmLabel}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/* edit a payment (amount + date + bank ref + note); amount re-adjusts balances server-side */
+function PaymentEditModal({ member, receipt, onClose, onSaved }) {
+  const init = msToJalali(receipt.dateMs);
+  const [amount, setAmount] = React.useState(String(receipt.amount));
+  const [y, setY] = React.useState(init.y);
+  const [m, setM] = React.useState(init.m);
+  const [d, setD] = React.useState(init.d);
+  const [bank, setBank] = React.useState(receipt.bankTxnId || '');
+  const [note, setNote] = React.useState(receipt.note || '');
+  const [busy, setBusy] = React.useState(false);
+  const amt = Number(amount) || 0;
+  const save = async () => {
+    if (amt <= 0) { alert('مبلغ باید بزرگ‌تر از صفر باشد.'); return; }
+    setBusy(true);
+    try {
+      if (window.API && window.API.live) {
+        const date = window.API.jalaliToMs(y, m, d);
+        await window.API.updatePayment({ memberId: member.id, paymentId: receipt.id, amount: amt, date, bankTxnId: bank.trim() || null, note: note.trim() || null });
+      }
+      await onSaved();
+    } catch (e) { setBusy(false); alert('خطا در ویرایش: ' + (e && e.message ? e.message : e)); }
+  };
+  return (
+    <Modal onClose={busy ? () => {} : onClose}>
+      <h3 style={{ margin: '0 0 16px', fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 19, color: 'var(--ink)' }}>ویرایش رسید {faDigits(receipt.no)}</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <StField label="مبلغ (تومان)"><input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))} className="mono" inputMode="numeric" style={{ ...stInput, direction: 'ltr', textAlign: 'left' }} /></StField>
+        <StField label="تاریخ"><JDate y={y} m={m} d={d} setY={setY} setM={setM} setD={setD} /></StField>
+        <StField label="شناسهٔ تراکنش بانکی (اختیاری)"><input value={bank} onChange={(e) => setBank(e.target.value)} className="mono" style={{ ...stInput, direction: 'ltr', textAlign: 'left' }} /></StField>
+        <StField label="یادداشت (اختیاری)"><input value={note} onChange={(e) => setNote(e.target.value)} style={stInput} /></StField>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+        <button disabled={busy} onClick={onClose} style={btnGhost}>انصراف</button>
+        <button disabled={busy} onClick={save} style={{ ...btnAccent, opacity: busy ? 0.7 : 1 }}><Icon name="check" size={16} stroke={2} /> {busy ? 'در حال ذخیره…' : 'ذخیرهٔ تغییرات'}</button>
+      </div>
+    </Modal>
+  );
+}
+
+/* edit a loan (principal/term/monthly/date + bank ref + note); principal re-adjusts outstanding */
+function LoanEditModal({ member, onClose, onSaved }) {
+  const loan = member.loan;
+  const init = msToJalali(loan.issuedAt);
+  const [principal, setPrincipal] = React.useState(String(loan.principal));
+  const [term, setTerm] = React.useState(String(loan.termMonths != null ? loan.termMonths : loan.term));
+  const [monthly, setMonthly] = React.useState(String(loan.monthly));
+  const [y, setY] = React.useState(init.y);
+  const [m, setM] = React.useState(init.m);
+  const [d, setD] = React.useState(init.d);
+  const [bank, setBank] = React.useState(loan.bankTxnId || '');
+  const [note, setNote] = React.useState(loan.note || '');
+  const [busy, setBusy] = React.useState(false);
+  const save = async () => {
+    const P = Number(principal) || 0, T = Number(term) || 0, M = Number(monthly) || 0;
+    if (P <= 0 || T <= 0 || M <= 0) { alert('اصل، مدت و قسط باید بزرگ‌تر از صفر باشند.'); return; }
+    setBusy(true);
+    try {
+      if (window.API && window.API.live) {
+        const issuedAt = window.API.jalaliToMs(y, m, d);
+        await window.API.updateLoan({ memberId: member.id, loanId: loan.id, principal: P, termMonths: T, monthly: M, issuedAt, bankTxnId: bank.trim() || null, note: note.trim() || null });
+      }
+      await onSaved();
+    } catch (e) { setBusy(false); alert('خطا در ویرایش وام: ' + (e && e.message ? e.message : e)); }
+  };
+  return (
+    <Modal onClose={busy ? () => {} : onClose}>
+      <h3 style={{ margin: '0 0 16px', fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 19, color: 'var(--ink)' }}>ویرایش وام</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <StField label="اصل وام (تومان)"><input value={principal} onChange={(e) => setPrincipal(e.target.value.replace(/[^0-9]/g, ''))} className="mono" inputMode="numeric" style={{ ...stInput, direction: 'ltr', textAlign: 'left' }} /></StField>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <StField label="مدت (ماه)"><input value={term} onChange={(e) => setTerm(e.target.value.replace(/[^0-9]/g, ''))} className="mono" inputMode="numeric" style={{ ...stInput, direction: 'ltr', textAlign: 'left' }} /></StField>
+          <StField label="قسط ماهانه"><input value={monthly} onChange={(e) => setMonthly(e.target.value.replace(/[^0-9]/g, ''))} className="mono" inputMode="numeric" style={{ ...stInput, direction: 'ltr', textAlign: 'left' }} /></StField>
+        </div>
+        <StField label="تاریخ پرداخت وام"><JDate y={y} m={m} d={d} setY={setY} setM={setM} setD={setD} /></StField>
+        <StField label="شناسهٔ تراکنش بانکی (اختیاری)"><input value={bank} onChange={(e) => setBank(e.target.value)} className="mono" style={{ ...stInput, direction: 'ltr', textAlign: 'left' }} /></StField>
+        <StField label="یادداشت (اختیاری)"><input value={note} onChange={(e) => setNote(e.target.value)} style={stInput} /></StField>
+        <div style={{ fontSize: 11.5, color: 'var(--ink-3)', lineHeight: 1.6 }}>تغییر «اصل وام» به همان میزان روی ماندهٔ وام اعمال می‌شود.</div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+        <button disabled={busy} onClick={onClose} style={btnGhost}>انصراف</button>
+        <button disabled={busy} onClick={save} style={{ ...btnAccent, opacity: busy ? 0.7 : 1 }}><Icon name="check" size={16} stroke={2} /> {busy ? 'در حال ذخیره…' : 'ذخیرهٔ تغییرات'}</button>
+      </div>
+    </Modal>
+  );
+}
+
+const txnIconBtn = { width: 30, height: 30, borderRadius: 8, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' };
+
+/* expandable receipts list with per-row edit/delete (admin) */
+function Receipts({ title, rows, member, onChanged }) {
   const [open, setOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState(null);
+  const [deleting, setDeleting] = React.useState(null);
   const total = rows.reduce((t, r) => t + r.amount, 0);
   return (
     <section style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
@@ -42,26 +199,39 @@ function Receipts({ title, rows }) {
         <Icon name="chevron" size={16} style={{ color: 'var(--ink-3)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .18s ease' }} />
       </button>
       {open && (
-        <div style={{ borderTop: '1px solid var(--hair)', padding: '4px 20px 14px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'right' }}>
-                <th style={{ padding: '8px 0', fontWeight: 500 }}>شمارهٔ رسید</th>
-                <th style={{ padding: '8px 0', fontWeight: 500 }}>تاریخ</th>
-                <th style={{ padding: '8px 0', fontWeight: 500, textAlign: 'left' }}>مبلغ (تومان)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.no} style={{ borderTop: '1px solid var(--hair-2)' }}>
-                  <td style={{ padding: '9px 0', fontSize: 13, color: 'var(--ink-2)' }} className="mono">{faDigits(r.no)}</td>
-                  <td style={{ padding: '9px 0', fontSize: 13, color: 'var(--ink-2)' }}>{r.date}</td>
-                  <td style={{ padding: '9px 0', fontSize: 13.5, color: 'var(--ink)', textAlign: 'left', fontWeight: 600 }} className="mono">{fmt(r.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{ borderTop: '1px solid var(--hair)', padding: '6px 20px 12px' }}>
+          {rows.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--ink-3)', padding: '10px 0' }}>رسیدی ثبت نشده است.</div>}
+          {rows.map((r) => (
+            <div key={r.id || r.no} style={{ borderTop: '1px solid var(--hair-2)', padding: '10px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="mono" style={{ fontSize: 12.5, color: 'var(--ink-3)', width: 54, flex: 'none' }}>{faDigits(r.no)}</span>
+                <span style={{ flex: 1, fontSize: 13, color: 'var(--ink-2)', minWidth: 0 }}>{r.date}</span>
+                <span className="mono" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>{fmt(r.amount)}</span>
+                <button title="ویرایش" onClick={() => setEditing(r)} style={txnIconBtn}><Icon name="edit" size={14} stroke={1.8} style={{ color: 'var(--ink-2)' }} /></button>
+                <button title="حذف" onClick={() => setDeleting(r)} style={{ ...txnIconBtn, borderColor: 'var(--warn-line)', background: 'var(--warn-soft)' }}><Icon name="trash" size={14} stroke={1.8} style={{ color: 'var(--warn)' }} /></button>
+              </div>
+              {(r.bankTxnId || r.note) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 5, paddingRight: 64, fontSize: 11.5, color: 'var(--ink-3)' }}>
+                  {r.bankTxnId && <span>کد بانکی: <span className="mono" style={{ direction: 'ltr', color: 'var(--ink-2)' }}>{r.bankTxnId}</span></span>}
+                  {r.note && <span>یادداشت: <span style={{ color: 'var(--ink-2)' }}>{r.note}</span></span>}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
+      )}
+      {editing && <PaymentEditModal member={member} receipt={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await onChanged(); }} />}
+      {deleting && (
+        <ConfirmDelete
+          title="حذف رسید"
+          body={<>آیا از حذف رسید <span className="mono">{faDigits(deleting.no)}</span> به مبلغ <span className="mono">{fmt(deleting.amount)}</span> تومان مطمئن‌اید؟ موجودی به‌طور خودکار اصلاح می‌شود و این کار قابل بازگشت نیست.</>}
+          confirmLabel="حذف رسید"
+          onCancel={() => setDeleting(null)}
+          onConfirm={async () => {
+            if (window.API && window.API.live) await window.API.deletePayment({ memberId: member.id, paymentId: deleting.id });
+            setDeleting(null); await onChanged();
+          }}
+        />
       )}
     </section>
   );
@@ -73,6 +243,13 @@ function Statement() {
   const isMobile = useIsMobile();
   const [confirmDel, setConfirmDel] = React.useState(false);
   const [deleted, setDeleted] = React.useState(false);
+  const [editLoan, setEditLoan] = React.useState(false);
+  const [delLoan, setDelLoan] = React.useState(false);
+  const [, force] = React.useReducer((x) => x + 1, 0);
+  const reload = React.useCallback(async () => {
+    if (window.API && window.API.live && window.API.loadFund) { try { await window.API.loadFund(); } catch (e) {} }
+    force();
+  }, []);
 
   if (!m) {
     return (
@@ -192,7 +369,12 @@ function Statement() {
 
       {/* loan */}
       {m.loan && (
-        <Card title="وام فعال" icon="coins">
+        <Card title="وام فعال" icon="coins" right={
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button title="ویرایش وام" onClick={() => setEditLoan(true)} style={txnIconBtn}><Icon name="edit" size={14} stroke={1.8} style={{ color: 'var(--ink-2)' }} /></button>
+            <button title="حذف وام" onClick={() => setDelLoan(true)} style={{ ...txnIconBtn, borderColor: 'var(--warn-line)', background: 'var(--warn-soft)' }}><Icon name="trash" size={14} stroke={1.8} style={{ color: 'var(--warn)' }} /></button>
+          </div>
+        }>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
             {[['اصل وام', m.loan.principal], ['قسط ماهانه', m.loan.monthly], ['مانده', m.loan.outstanding]].map(([l, v]) => (
               <div key={l}>
@@ -211,9 +393,9 @@ function Statement() {
         </Card>
       )}
 
-      {/* payment receipts — expandable on demand */}
-      <Receipts title="رسیدهای پس‌انداز و حق عضویت" rows={m.seedReceipts} />
-      {m.installmentReceipts.length > 0 && <Receipts title="رسیدهای اقساط وام" rows={m.installmentReceipts} />}
+      {/* payment receipts — expandable on demand; admin can edit/delete each */}
+      <Receipts title="رسیدهای پس‌انداز و حق عضویت" rows={m.seedReceipts} member={m} onChanged={reload} />
+      {m.installmentReceipts.length > 0 && <Receipts title="رسیدهای اقساط وام" rows={m.installmentReceipts} member={m} onChanged={reload} />}
 
       {/* loan turn + contact (incl. referrer) */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14 }}>
@@ -238,6 +420,23 @@ function Statement() {
       <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--ink-3)', marginTop: 6 }}>
         صورت‌حساب صندوق مهر۱۱۰ · تا تاریخِ {fund.meta.asOf}
       </div>
+
+      {/* loan edit / delete (admin) */}
+      {m.loan && editLoan && (
+        <LoanEditModal member={m} onClose={() => setEditLoan(false)} onSaved={async () => { setEditLoan(false); await reload(); }} />
+      )}
+      {m.loan && delLoan && (
+        <ConfirmDelete
+          title="حذف وام"
+          body={<>آیا از حذف وام <strong>{m.name}</strong> (اصل <span className="mono">{fmt(m.loan.principal)}</span> تومان) مطمئن‌اید؟ همهٔ رسیدهای اقساط این وام نیز حذف می‌شوند و این کار قابل بازگشت نیست.</>}
+          confirmLabel="حذف وام"
+          onCancel={() => setDelLoan(false)}
+          onConfirm={async () => {
+            if (window.API && window.API.live) await window.API.deleteLoan({ memberId: m.id, loanId: m.loan.id });
+            setDelLoan(false); await reload();
+          }}
+        />
+      )}
 
       {/* delete confirm */}
       {confirmDel && (

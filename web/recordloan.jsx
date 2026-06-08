@@ -83,6 +83,8 @@ function RecordLoan() {
   const [d, setD] = React.useState(today.d);
   const [mo, setMo] = React.useState(today.m);
   const [yr, setYr] = React.useState(today.y);
+  const [bankTxnId, setBankTxnId] = React.useState('');
+  const [note, setNote] = React.useState('');
   const [err, setErr] = React.useState('');
   const [saved, setSaved] = React.useState(null);
 
@@ -108,6 +110,7 @@ function RecordLoan() {
         await window.API.issueLoan({
           memberId, principal: P, termMonths: term_, installmentsPaid: paid_,
           existing: isExisting, issuedAt,
+          bankTxnId: bankTxnId.trim() || undefined, note: note.trim() || undefined,
         });
       } catch (e) {
         setErr('خطا در ثبت وام: ' + (e && e.message ? e.message : e));
@@ -227,6 +230,16 @@ function RecordLoan() {
                 {Array.from({ length: 30 }, (_, i) => today.y - i).map((y) => <option key={y} value={y}>{faDigits(y)}</option>)}
               </RLSelect>
             </div>
+          </FieldRL>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14 }}>
+          <FieldRL label="شناسهٔ تراکنش بانکی (اختیاری)" hint="برای جلوگیری از ثبت تکراری همان واریز">
+            <input value={bankTxnId} onChange={(e) => setBankTxnId(e.target.value)} className="mono"
+              style={{ ...rlInput, direction: 'ltr', textAlign: 'left' }} />
+          </FieldRL>
+          <FieldRL label="یادداشت (اختیاری)">
+            <input value={note} onChange={(e) => setNote(e.target.value)} style={rlInput} />
           </FieldRL>
         </div>
 
