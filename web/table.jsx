@@ -180,6 +180,106 @@ function MemberCards({ rows, open, setOpen, onClear, noMembers }) {
   );
 }
 
+/* drag-to-reorder the loan queue (rotation) right inside همهٔ اعضا.
+   «بازگردانی» restores the order as it was when you opened the tool, so a
+   messed-up reorder is always reversible (and it's a self-contained commit). */
+function LoanReorder({ fund, onDone }) {
+  const baseline = React.useMemo(
+    () => (fund.loanOrder || []).map((m) => ({ id: m.id, name: m.name, family: m.family, received: m.loanReceived })),
+    [fund.loanOrder]);
+  const [order, setOrder] = React.useState(baseline);
+  const [savedIds, setSavedIds] = React.useState(() => baseline.map((m) => m.id));
+  const [dragId, setDragId] = React.useState(null);
+  const [overId, setOverId] = React.useState(null);
+  const [busy, setBusy] = React.useState(false);
+
+  const ids = order.map((m) => m.id);
+  const sameAs = (a) => ids.length === a.length && ids.every((id, i) => id === a[i]);
+  const dirty = !sameAs(savedIds);
+  const changedFromBaseline = !sameAs(baseline.map((m) => m.id));
+  const nextId = (order.find((m) => !m.received) || {}).id;
+
+  const move = (from, to) => {
+    if (from === to || from < 0 || to < 0) return;
+    setOrder((arr) => { const n = arr.slice(); const [it] = n.splice(from, 1); n.splice(to, 0, it); return n; });
+  };
+  const onDrop = (targetId) => {
+    move(order.findIndex((m) => m.id === dragId), order.findIndex((m) => m.id === targetId));
+    setDragId(null); setOverId(null);
+  };
+  const bump = (id, dir) => { const i = order.findIndex((m) => m.id === id); move(i, Math.max(0, Math.min(order.length - 1, i + dir))); };
+  const save = () => {
+    if (window.API && window.API.live) {
+      setBusy(true);
+      window.API.reorderLoanOrder(ids).then(() => { setSavedIds(ids); setBusy(false); })
+        .catch((e) => { setBusy(false); alert('خطا در ذخیرهٔ ترتیب: ' + (e && e.message ? e.message : e)); });
+    } else { setSavedIds(ids); }
+  };
+  const arrow = (disabled) => ({ width: 26, height: 18, display: 'grid', placeItems: 'center', borderRadius: 5, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: disabled ? 'not-allowed' : 'pointer', color: disabled ? 'var(--hair)' : 'var(--ink-3)', padding: 0 });
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13, color: 'var(--ink-3)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+          <Icon name="grip" size={15} /> ردیف‌ها را بکشید تا ترتیب نوبت وام را بچینید.
+        </div>
+        <button onClick={onDone} style={{ height: 36, padding: '0 14px', borderRadius: 9, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)' }}>پایان ترتیب‌دهی</button>
+      </div>
+
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+        {order.length === 0 && <div style={{ padding: '28px 18px', textAlign: 'center', fontSize: 13.5, color: 'var(--ink-3)' }}>هنوز عضوی در نوبت وام نیست.</div>}
+        {order.map((m, i) => {
+          const isNext = m.id === nextId;
+          const isOver = overId === m.id && dragId !== m.id;
+          return (
+            <div key={m.id} draggable
+              onDragStart={() => setDragId(m.id)} onDragEnter={() => setOverId(m.id)} onDragOver={(e) => e.preventDefault()}
+              onDrop={() => onDrop(m.id)} onDragEnd={() => { setDragId(null); setOverId(null); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                borderBottom: i < order.length - 1 ? '1px solid var(--hair-2)' : 'none',
+                background: isOver ? 'var(--accent-soft)' : isNext ? 'var(--accent-soft)' : dragId === m.id ? 'var(--surface-2)' : 'transparent',
+                boxShadow: isNext ? 'inset 3px 0 0 var(--accent)' : 'none', opacity: dragId === m.id ? 0.5 : 1, cursor: 'grab', transition: 'background .12s ease',
+              }}>
+              <span style={{ color: 'var(--ink-3)', display: 'inline-flex', flex: 'none' }}><Icon name="grip" size={18} /></span>
+              <span className="mono" style={{ width: 26, textAlign: 'center', fontSize: 13, fontWeight: 600, color: isNext ? 'var(--accent)' : 'var(--ink-3)', flex: 'none' }}>{faDigits(i + 1)}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {m.name}
+                  {isNext && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>نفر بعدی</span>}
+                  {m.received && <span title="در این دور وام گرفته" style={{ display: 'inline-flex', color: 'var(--ink-3)' }}><Icon name="check" size={13} stroke={2.2} /></span>}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>خانوادهٔ {m.family}</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 'none' }}>
+                <button onClick={() => bump(m.id, -1)} disabled={i === 0} style={arrow(i === 0)}><Icon name="sortUp" size={13} stroke={2} /></button>
+                <button onClick={() => bump(m.id, 1)} disabled={i === order.length - 1} style={arrow(i === order.length - 1)}><Icon name="sortDn" size={13} stroke={2} /></button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12.5, color: dirty ? 'var(--ink-3)' : 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {!dirty && <Icon name="check" size={14} stroke={2.2} />}{dirty ? 'تغییرات ذخیره‌نشده' : 'ترتیب ذخیره شده'}
+        </span>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setOrder(baseline)} disabled={!changedFromBaseline} style={{ height: 40, padding: '0 16px', borderRadius: 10, background: 'var(--surface)', color: changedFromBaseline ? 'var(--ink-2)' : 'var(--ink-3)', border: '1px solid var(--hair)', cursor: changedFromBaseline ? 'pointer' : 'default', font: 'inherit', fontSize: 13.5, fontWeight: 600, opacity: changedFromBaseline ? 1 : 0.5, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+            <Icon name="refresh" size={15} stroke={1.8} /> بازگردانی
+          </button>
+          <button onClick={save} disabled={!dirty || busy} style={{ height: 40, padding: '0 20px', borderRadius: 10, background: 'var(--accent)', color: 'var(--surface)', border: 'none', cursor: (!dirty || busy) ? 'default' : 'pointer', font: 'inherit', fontSize: 13.5, fontWeight: 600, opacity: (!dirty || busy) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+            <Icon name="check" size={16} stroke={2} /> {busy ? 'در حال ذخیره…' : 'ثبت ترتیب'}
+          </button>
+        </div>
+      </div>
+      <div style={{ marginTop: 10, fontSize: 12, color: 'var(--ink-3)' }}>
+        برای مدیریت کامل (علامت دریافت و شروع دور جدید): <a href="loan-order.html" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>صفحهٔ ترتیب وام</a>
+      </div>
+    </div>
+  );
+}
+
 function MembersTable({ fund, isMobile }) {
   const [query, setQuery] = React.useState('');
   const [family, setFamily] = React.useState(ALL_FAM);
@@ -189,6 +289,8 @@ function MembersTable({ fund, isMobile }) {
   const [sortDir, setSortDir] = React.useState('desc');
   const [open, setOpen] = React.useState(null);
   const [page, setPage] = React.useState(0);
+  const [viewAll, setViewAll] = React.useState(false);
+  const [reorder, setReorder] = React.useState(false);
   const clearAll = () => { setQuery(''); setFamily(ALL_FAM); setBehindOnly(false); setPurchasingOnly(false); };
 
   React.useEffect(() => {
@@ -229,9 +331,9 @@ function MembersTable({ fund, isMobile }) {
 
   // pagination — reset to first page whenever the filtered set changes
   React.useEffect(() => { setPage(0); }, [query, family, behindOnly, purchasingOnly, sortKey, sortDir]);
-  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE));
+  const pageCount = viewAll ? 1 : Math.max(1, Math.ceil(rows.length / PAGE));
   const curPage = Math.min(page, pageCount - 1);
-  const pageRows = rows.slice(curPage * PAGE, curPage * PAGE + PAGE);
+  const pageRows = viewAll ? rows : rows.slice(curPage * PAGE, curPage * PAGE + PAGE);
 
   const chip = (label, onClear) => (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 500, color: 'var(--warn)', background: 'var(--warn-soft)', border: '1px solid var(--warn-line)', borderRadius: 99, padding: '5px 9px 5px 11px' }}>
@@ -242,6 +344,10 @@ function MembersTable({ fund, isMobile }) {
 
   return (
     <div>
+      {reorder ? (
+        <LoanReorder fund={fund} onDone={() => setReorder(false)} />
+      ) : (
+      <React.Fragment>
       {/* toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: 340 }}>
@@ -264,6 +370,13 @@ function MembersTable({ fund, isMobile }) {
           color: purchasingOnly ? 'var(--accent)' : 'var(--ink-2)',
         }}>
           <Icon name="arrowUpRight" size={15} stroke={1.7} /> در حال تأمین
+        </button>
+        <button onClick={() => setReorder(true)} title="چیدن ترتیب نوبت وام‌گیرندگان" style={{
+          height: 40, padding: '0 13px', borderRadius: 10, cursor: 'pointer', font: 'inherit', flex: 'none',
+          display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap',
+          border: '1px solid var(--hair)', background: 'var(--surface)', color: 'var(--ink-2)',
+        }}>
+          <Icon name="grip" size={15} /> ترتیب وام‌گیرندگان
         </button>
         {behindOnly && chip('عقب‌افتاده در پرداخت', () => setBehindOnly(false))}
         <div style={{ marginInlineStart: 'auto', fontSize: 13, color: 'var(--ink-3)' }}>
@@ -356,8 +469,8 @@ function MembersTable({ fund, isMobile }) {
       </div>
       )}
 
-      {/* pager */}
-      {pageCount > 1 && (() => {
+      {/* pager + view-all */}
+      {rows.length > PAGE && (() => {
         const btn = (disabled) => ({
           height: 36, padding: '0 16px', borderRadius: 9, border: '1px solid var(--hair)',
           background: 'var(--surface)', color: disabled ? 'var(--ink-3)' : 'var(--ink)',
@@ -365,13 +478,22 @@ function MembersTable({ fund, isMobile }) {
           opacity: disabled ? 0.5 : 1,
         });
         return (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginTop: 16 }}>
-            <button disabled={curPage === 0} onClick={() => setPage((p) => Math.max(0, p - 1))} style={btn(curPage === 0)}>قبلی</button>
-            <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>صفحهٔ {faDigits(curPage + 1)} از {faDigits(pageCount)}</span>
-            <button disabled={curPage >= pageCount - 1} onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} style={btn(curPage >= pageCount - 1)}>بعدی</button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginTop: 16, flexWrap: 'wrap' }}>
+            {!viewAll && pageCount > 1 && (
+              <React.Fragment>
+                <button disabled={curPage === 0} onClick={() => setPage((p) => Math.max(0, p - 1))} style={btn(curPage === 0)}>قبلی</button>
+                <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>صفحهٔ {faDigits(curPage + 1)} از {faDigits(pageCount)}</span>
+                <button disabled={curPage >= pageCount - 1} onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} style={btn(curPage >= pageCount - 1)}>بعدی</button>
+              </React.Fragment>
+            )}
+            <button onClick={() => setViewAll((v) => !v)} style={{ ...btn(false), color: 'var(--ink-2)' }}>
+              {viewAll ? 'نمایش صفحه‌ای' : `نمایش همه (${faDigits(rows.length)})`}
+            </button>
           </div>
         );
       })()}
+      </React.Fragment>
+      )}
     </div>
   );
 }
