@@ -119,7 +119,7 @@ function MemberActions({ m }) {
   );
 }
 
-function MemberCards({ rows, open, setOpen, onClear, noMembers }) {
+function MemberCards({ rows, open, setOpen, onClear, noMembers, nextId }) {
   if (rows.length === 0) {
     return (
       <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', padding: '44px 20px', textAlign: 'center' }}>
@@ -151,8 +151,9 @@ function MemberCards({ rows, open, setOpen, onClear, noMembers }) {
                 {m.pendingShare && <Icon name="arrowUpRight" size={14} style={{ color: 'var(--accent)' }} />}
                 <Icon name="chevron" size={15} style={{ color: 'var(--ink-3)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .18s ease' }} />
               </div>
-              <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 3 }}>
-                خانوادهٔ {m.family}{m.behind && <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · {fmt(m.missed)} قسط عقب</span>}
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span>خانوادهٔ {m.family}{m.behind && <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · {fmt(m.missed)} قسط عقب</span>}</span>
+                <LoanStatus m={m} isNext={m.id === nextId} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
                 <div style={{ flex: 1 }}>
@@ -180,103 +181,29 @@ function MemberCards({ rows, open, setOpen, onClear, noMembers }) {
   );
 }
 
-/* drag-to-reorder the loan queue (rotation) right inside همهٔ اعضا.
-   «بازگردانی» restores the order as it was when you opened the tool, so a
-   messed-up reorder is always reversible (and it's a self-contained commit). */
-function LoanReorder({ fund, onDone }) {
-  const baseline = React.useMemo(
-    () => (fund.loanOrder || []).map((m) => ({ id: m.id, name: m.name, family: m.family, received: m.loanReceived })),
-    [fund.loanOrder]);
-  const [order, setOrder] = React.useState(baseline);
-  const [savedIds, setSavedIds] = React.useState(() => baseline.map((m) => m.id));
-  const [dragId, setDragId] = React.useState(null);
-  const [overId, setOverId] = React.useState(null);
-  const [busy, setBusy] = React.useState(false);
+/* first active member in the loan queue who hasn't received a loan this round */
+function queueNextId(queue, byId) {
+  for (const id of queue) { const m = byId[id]; if (m && m.status === 'active' && !m.loanReceived) return id; }
+  return null;
+}
 
-  const ids = order.map((m) => m.id);
-  const sameAs = (a) => ids.length === a.length && ids.every((id, i) => id === a[i]);
-  const dirty = !sameAs(savedIds);
-  const changedFromBaseline = !sameAs(baseline.map((m) => m.id));
-  const nextId = (order.find((m) => !m.received) || {}).id;
-
-  const move = (from, to) => {
-    if (from === to || from < 0 || to < 0) return;
-    setOrder((arr) => { const n = arr.slice(); const [it] = n.splice(from, 1); n.splice(to, 0, it); return n; });
-  };
-  const onDrop = (targetId) => {
-    move(order.findIndex((m) => m.id === dragId), order.findIndex((m) => m.id === targetId));
-    setDragId(null); setOverId(null);
-  };
-  const bump = (id, dir) => { const i = order.findIndex((m) => m.id === id); move(i, Math.max(0, Math.min(order.length - 1, i + dir))); };
-  const save = () => {
-    if (window.API && window.API.live) {
-      setBusy(true);
-      window.API.reorderLoanOrder(ids).then(() => { setSavedIds(ids); setBusy(false); })
-        .catch((e) => { setBusy(false); alert('خطا در ذخیرهٔ ترتیب: ' + (e && e.message ? e.message : e)); });
-    } else { setSavedIds(ids); }
-  };
-  const arrow = (disabled) => ({ width: 26, height: 18, display: 'grid', placeItems: 'center', borderRadius: 5, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: disabled ? 'not-allowed' : 'pointer', color: disabled ? 'var(--hair)' : 'var(--ink-3)', padding: 0 });
-
+/* loan-rotation status shown inline in همهٔ اعضا: star = next in line,
+   pill = received / waiting (active members only). */
+function LoanStatus({ m, isNext }) {
+  if (m.status !== 'active') return null;
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 13, color: 'var(--ink-3)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-          <Icon name="grip" size={15} /> ردیف‌ها را بکشید تا ترتیب نوبت وام را بچینید.
-        </div>
-        <button onClick={onDone} style={{ height: 36, padding: '0 14px', borderRadius: 9, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)' }}>پایان ترتیب‌دهی</button>
-      </div>
-
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-        {order.length === 0 && <div style={{ padding: '28px 18px', textAlign: 'center', fontSize: 13.5, color: 'var(--ink-3)' }}>هنوز عضوی در نوبت وام نیست.</div>}
-        {order.map((m, i) => {
-          const isNext = m.id === nextId;
-          const isOver = overId === m.id && dragId !== m.id;
-          return (
-            <div key={m.id} draggable
-              onDragStart={() => setDragId(m.id)} onDragEnter={() => setOverId(m.id)} onDragOver={(e) => e.preventDefault()}
-              onDrop={() => onDrop(m.id)} onDragEnd={() => { setDragId(null); setOverId(null); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
-                borderBottom: i < order.length - 1 ? '1px solid var(--hair-2)' : 'none',
-                background: isOver ? 'var(--accent-soft)' : isNext ? 'var(--accent-soft)' : dragId === m.id ? 'var(--surface-2)' : 'transparent',
-                boxShadow: isNext ? 'inset 3px 0 0 var(--accent)' : 'none', opacity: dragId === m.id ? 0.5 : 1, cursor: 'grab', transition: 'background .12s ease',
-              }}>
-              <span style={{ color: 'var(--ink-3)', display: 'inline-flex', flex: 'none' }}><Icon name="grip" size={18} /></span>
-              <span className="mono" style={{ width: 26, textAlign: 'center', fontSize: 13, fontWeight: 600, color: isNext ? 'var(--accent)' : 'var(--ink-3)', flex: 'none' }}>{faDigits(i + 1)}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {m.name}
-                  {isNext && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>نفر بعدی</span>}
-                  {m.received && <span title="در این دور وام گرفته" style={{ display: 'inline-flex', color: 'var(--ink-3)' }}><Icon name="check" size={13} stroke={2.2} /></span>}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>خانوادهٔ {m.family}</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 'none' }}>
-                <button onClick={() => bump(m.id, -1)} disabled={i === 0} style={arrow(i === 0)}><Icon name="sortUp" size={13} stroke={2} /></button>
-                <button onClick={() => bump(m.id, 1)} disabled={i === order.length - 1} style={arrow(i === order.length - 1)}><Icon name="sortDn" size={13} stroke={2} /></button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12.5, color: dirty ? 'var(--ink-3)' : 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          {!dirty && <Icon name="check" size={14} stroke={2.2} />}{dirty ? 'تغییرات ذخیره‌نشده' : 'ترتیب ذخیره شده'}
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flex: 'none' }}>
+      {isNext && <span title="نفر بعدیِ نوبت وام" style={{ display: 'inline-flex', color: 'var(--accent)' }}><Icon name="star" size={15} /></span>}
+      {m.loanReceived ? (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 99, color: 'var(--accent)', background: 'var(--accent-soft)', border: '1px solid var(--accent-line)' }}>
+          <Icon name="check" size={11} stroke={2} /> دریافت کرده
         </span>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => setOrder(baseline)} disabled={!changedFromBaseline} style={{ height: 40, padding: '0 16px', borderRadius: 10, background: 'var(--surface)', color: changedFromBaseline ? 'var(--ink-2)' : 'var(--ink-3)', border: '1px solid var(--hair)', cursor: changedFromBaseline ? 'pointer' : 'default', font: 'inherit', fontSize: 13.5, fontWeight: 600, opacity: changedFromBaseline ? 1 : 0.5, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-            <Icon name="refresh" size={15} stroke={1.8} /> بازگردانی
-          </button>
-          <button onClick={save} disabled={!dirty || busy} style={{ height: 40, padding: '0 20px', borderRadius: 10, background: 'var(--accent)', color: 'var(--surface)', border: 'none', cursor: (!dirty || busy) ? 'default' : 'pointer', font: 'inherit', fontSize: 13.5, fontWeight: 600, opacity: (!dirty || busy) ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-            <Icon name="check" size={16} stroke={2} /> {busy ? 'در حال ذخیره…' : 'ثبت ترتیب'}
-          </button>
-        </div>
-      </div>
-      <div style={{ marginTop: 10, fontSize: 12, color: 'var(--ink-3)' }}>
-        برای مدیریت کامل (علامت دریافت و شروع دور جدید): <a href="loan-order.html" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>صفحهٔ ترتیب وام</a>
-      </div>
-    </div>
+      ) : (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500, color: 'var(--ink-3)' }}>
+          <Icon name="clock" size={11} stroke={1.8} /> در انتظار
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -285,13 +212,25 @@ function MembersTable({ fund, isMobile }) {
   const [family, setFamily] = React.useState(ALL_FAM);
   const [behindOnly, setBehindOnly] = React.useState(false);
   const [purchasingOnly, setPurchasingOnly] = React.useState(false);
-  const [sortKey, setSortKey] = React.useState('seedBalance');
-  const [sortDir, setSortDir] = React.useState('desc');
+  const [sortKey, setSortKey] = React.useState('rank');
+  const [sortDir, setSortDir] = React.useState('asc');
   const [open, setOpen] = React.useState(null);
   const [page, setPage] = React.useState(0);
   const [viewAll, setViewAll] = React.useState(false);
-  const [reorder, setReorder] = React.useState(false);
   const clearAll = () => { setQuery(''); setFamily(ALL_FAM); setBehindOnly(false); setPurchasingOnly(false); };
+
+  // --- loan-queue ranking (drag to reorder; persisted via reorderLoanOrder) ---
+  const baselineQueue = React.useMemo(() => (fund.loanOrder || []).map((m) => m.id), [fund.loanOrder]);
+  const [queue, setQueue] = React.useState(baselineQueue);
+  const [dragId, setDragId] = React.useState(null);
+  const [overId, setOverId] = React.useState(null);
+  const [savedQueue, setSavedQueue] = React.useState(baselineQueue);
+  const [savingOrder, setSavingOrder] = React.useState(false);
+  const dragGuard = React.useRef(false); // suppress the click-to-expand right after a drag
+  const byId = React.useMemo(() => Object.fromEntries(fund.members.map((m) => [m.id, m])), [fund.members]);
+  const rankOf = (id) => { const i = queue.indexOf(id); return i === -1 ? 1e9 : i; };
+  const nextId = queueNextId(queue, byId);
+  const orderDirty = queue.length !== savedQueue.length || queue.some((id, i) => id !== savedQueue[i]);
 
   React.useEffect(() => {
     const h = () => { setBehindOnly(true); setQuery(''); setFamily(ALL_FAM); };
@@ -316,6 +255,7 @@ function MembersTable({ fund, isMobile }) {
       r = r.filter((m) => m.name.toLowerCase().includes(q) || m.family.toLowerCase().includes(q));
     }
     const val = (m) => {
+      if (sortKey === 'rank') return rankOf(m.id);
       if (sortKey === 'sinceSort') return m.since.y * 12 + m.since.m;
       if (sortKey === 'status') return m.status === 'active' ? 1 : 0;
       if (sortKey === 'fundedPct') return m.fundedPct;
@@ -327,7 +267,27 @@ function MembersTable({ fund, isMobile }) {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return r;
-  }, [fund.members, behindOnly, purchasingOnly, family, query, sortKey, sortDir]);
+  }, [fund.members, behindOnly, purchasingOnly, family, query, sortKey, sortDir, queue]);
+
+  // drag-reorder the loan queue only in its natural order (rank, unfiltered)
+  const dragEnabled = sortKey === 'rank' && !query.trim() && family === ALL_FAM && !behindOnly && !purchasingOnly;
+  const onRowDrop = (targetId) => {
+    if (dragId && targetId && dragId !== targetId) {
+      setQueue((q) => {
+        const from = q.indexOf(dragId), to = q.indexOf(targetId);
+        if (from === -1 || to === -1) return q;
+        const n = q.slice(); const [it] = n.splice(from, 1); n.splice(to, 0, it); return n;
+      });
+    }
+    setDragId(null); setOverId(null);
+  };
+  const saveOrder = () => {
+    if (window.API && window.API.live) {
+      setSavingOrder(true);
+      window.API.reorderLoanOrder(queue).then(() => { setSavedQueue(queue); setSavingOrder(false); })
+        .catch((e) => { setSavingOrder(false); alert('خطا در ذخیرهٔ ترتیب: ' + (e && e.message ? e.message : e)); });
+    } else { setSavedQueue(queue); }
+  };
 
   // pagination — reset to first page whenever the filtered set changes
   React.useEffect(() => { setPage(0); }, [query, family, behindOnly, purchasingOnly, sortKey, sortDir]);
@@ -344,10 +304,6 @@ function MembersTable({ fund, isMobile }) {
 
   return (
     <div>
-      {reorder ? (
-        <LoanReorder fund={fund} onDone={() => setReorder(false)} />
-      ) : (
-      <React.Fragment>
       {/* toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: 340 }}>
@@ -371,12 +327,13 @@ function MembersTable({ fund, isMobile }) {
         }}>
           <Icon name="arrowUpRight" size={15} stroke={1.7} /> در حال تأمین
         </button>
-        <button onClick={() => setReorder(true)} title="چیدن ترتیب نوبت وام‌گیرندگان" style={{
+        <button onClick={() => { clearAll(); setSortKey('rank'); setSortDir('asc'); setViewAll(true); }} title="نمایش به ترتیب نوبت وام (برای جابه‌جایی با کشیدن)" style={{
           height: 40, padding: '0 13px', borderRadius: 10, cursor: 'pointer', font: 'inherit', flex: 'none',
           display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap',
-          border: '1px solid var(--hair)', background: 'var(--surface)', color: 'var(--ink-2)',
+          border: `1px solid ${dragEnabled ? 'var(--accent-line)' : 'var(--hair)'}`,
+          background: dragEnabled ? 'var(--accent-soft)' : 'var(--surface)', color: dragEnabled ? 'var(--accent)' : 'var(--ink-2)',
         }}>
-          <Icon name="grip" size={15} /> ترتیب وام‌گیرندگان
+          <Icon name="grip" size={15} /> ترتیب نوبت وام
         </button>
         {behindOnly && chip('عقب‌افتاده در پرداخت', () => setBehindOnly(false))}
         <div style={{ marginInlineStart: 'auto', fontSize: 13, color: 'var(--ink-3)' }}>
@@ -384,9 +341,22 @@ function MembersTable({ fund, isMobile }) {
         </div>
       </div>
 
+      {/* loan-queue context: drag hint (desktop) + full-management link */}
+      {dragEnabled && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12.5, color: 'var(--ink-3)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+            <Icon name={isMobile ? 'star' : 'grip'} size={14} />
+            {isMobile ? 'ترتیب نوبت وام (جابه‌جایی از رایانه)' : 'ردیف‌ها را بکشید تا ترتیب نوبت وام را بچینید.'}
+          </span>
+          <a href="loan-order.html" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+            مدیریت کامل نوبت وام (علامت دریافت / دور جدید) <Icon name="arrowR" size={14} stroke={1.8} style={{ transform: 'scaleX(-1)' }} />
+          </a>
+        </div>
+      )}
+
       {/* table (desktop) / cards (mobile) */}
       {isMobile ? (
-        <MemberCards rows={pageRows} open={open} setOpen={setOpen} noMembers={fund.members.length === 0} onClear={clearAll} />
+        <MemberCards rows={pageRows} open={open} setOpen={setOpen} noMembers={fund.members.length === 0} onClear={clearAll} nextId={nextId} />
       ) : (
       <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
@@ -419,15 +389,28 @@ function MembersTable({ fund, isMobile }) {
             )}
             {pageRows.map((m) => {
               const isOpen = open === m.id;
+              const canDrag = dragEnabled && m.status === 'active';
+              const isOver = canDrag && overId === m.id && dragId !== m.id;
               return (
                 <React.Fragment key={m.id}>
-                  <tr onClick={() => setOpen(isOpen ? null : m.id)} className="mrow" style={{
-                    borderBottom: isOpen ? 'none' : '1px solid var(--hair-2)', cursor: 'pointer',
-                    background: isOpen ? 'var(--surface-2)' : 'transparent',
-                    boxShadow: m.behind ? 'inset -3px 0 0 var(--warn)' : 'none',
-                  }}>
+                  <tr className={'mrow' + (isOver ? ' is-over' : '')}
+                    onClick={() => { if (dragGuard.current) { dragGuard.current = false; return; } setOpen(isOpen ? null : m.id); }}
+                    draggable={canDrag}
+                    onDragStart={canDrag ? () => { dragGuard.current = true; setDragId(m.id); } : undefined}
+                    onDragEnter={canDrag ? () => setOverId(m.id) : undefined}
+                    onDragOver={canDrag ? (e) => e.preventDefault() : undefined}
+                    onDrop={canDrag ? () => onRowDrop(m.id) : undefined}
+                    onDragEnd={canDrag ? () => { setDragId(null); setOverId(null); setTimeout(() => { dragGuard.current = false; }, 0); } : undefined}
+                    style={{
+                      borderBottom: isOpen ? 'none' : '1px solid var(--hair-2)',
+                      cursor: dragId === m.id ? 'grabbing' : canDrag ? 'grab' : 'pointer',
+                      background: isOpen || dragId === m.id ? 'var(--surface-2)' : 'transparent',
+                      boxShadow: [m.behind && 'inset -3px 0 0 var(--warn)', m.id === nextId && 'inset 3px 0 0 var(--accent)'].filter(Boolean).join(', ') || 'none',
+                      opacity: dragId === m.id ? 0.5 : 1,
+                    }}>
                     <td style={{ padding: '13px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+                        {dragEnabled && m.status === 'active' && <span title="برای جابه‌جایی بکشید" style={{ display: 'inline-flex', color: 'var(--ink-3)', flex: 'none' }}><Icon name="grip" size={15} /></span>}
                         {m.behind
                           ? <Icon name="alert" size={15} stroke={1.7} style={{ color: 'var(--warn)' }} />
                           : <span style={{ width: 15, flex: 'none' }} />}
@@ -435,6 +418,7 @@ function MembersTable({ fund, isMobile }) {
                         {m.behind && <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--warn)', whiteSpace: 'nowrap' }}>· {fmt(m.missed)} قسط عقب</span>}
                         {m.loan && <span title="وام فعال دارد" style={{ display: 'inline-flex', color: 'var(--ink-3)' }}><Icon name="coins" size={13} /></span>}
                         {m.pendingShare && <span title="سهم تأمین‌نشده" style={{ display: 'inline-flex', color: 'var(--accent)' }}><Icon name="arrowUpRight" size={13} /></span>}
+                        <LoanStatus m={m} isNext={m.id === nextId} />
                       </div>
                     </td>
                     <td style={{ padding: '13px 14px', fontSize: 13.5, color: 'var(--ink-2)' }}>{m.family}</td>
@@ -469,6 +453,21 @@ function MembersTable({ fund, isMobile }) {
       </div>
       )}
 
+      {/* loan-queue save / revert (appears after a drag) */}
+      {orderDirty && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14, flexWrap: 'wrap', background: 'var(--accent-soft)', border: '1px solid var(--accent-line)', borderRadius: 'var(--radius)', padding: '12px 16px' }}>
+          <span style={{ fontSize: 13, color: 'var(--ink-2)', fontWeight: 500 }}>ترتیب نوبت وام تغییر کرده — ذخیره نشده است.</span>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setQueue(baselineQueue)} title="بازگشت به ترتیب اولیه" style={{ height: 38, padding: '0 16px', borderRadius: 9, background: 'var(--surface)', color: 'var(--ink-2)', border: '1px solid var(--hair)', cursor: 'pointer', font: 'inherit', fontSize: 13.5, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+              <Icon name="refresh" size={15} stroke={1.8} /> بازگردانی
+            </button>
+            <button onClick={saveOrder} disabled={savingOrder} style={{ height: 38, padding: '0 18px', borderRadius: 9, background: 'var(--accent)', color: 'var(--surface)', border: 'none', cursor: savingOrder ? 'default' : 'pointer', font: 'inherit', fontSize: 13.5, fontWeight: 600, opacity: savingOrder ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+              <Icon name="check" size={16} stroke={2} /> {savingOrder ? 'در حال ذخیره…' : 'ثبت ترتیب'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* pager + view-all */}
       {rows.length > PAGE && (() => {
         const btn = (disabled) => ({
@@ -492,8 +491,6 @@ function MembersTable({ fund, isMobile }) {
           </div>
         );
       })()}
-      </React.Fragment>
-      )}
     </div>
   );
 }

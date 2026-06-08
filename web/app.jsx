@@ -114,14 +114,7 @@ function App() {
         <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)', lineHeight: 1.3, whiteSpace: 'nowrap' }}>صندوق در یک نگاه</h2>
         <span style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
       </div>
-      <div style={{
-        display: 'grid', gap: 14,
-        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-        alignItems: 'start',
-      }}>
-        <Composition fund={fund} />
-        <RotationQueue fund={fund} />
-      </div>
+      <Composition fund={fund} />
 
       {/* ---- three stat cards, one row, below the chart ---- */}
       <StatRow fund={fund}

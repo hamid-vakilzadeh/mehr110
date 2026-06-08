@@ -19,6 +19,7 @@
 <style>
   .mrow { transition: background .12s ease, box-shadow .12s ease; }
   .mrow:hover { background: var(--surface-2) !important; }
+  .mrow.is-over { background: var(--accent-soft) !important; } /* drop-target cue must beat :hover */
   select:hover, input:hover { border-color: var(--ink-3) !important; }
   input:focus, select:focus { border-color: var(--accent) !important; outline: none; }
   button { -webkit-tap-highlight-color: transparent; }
