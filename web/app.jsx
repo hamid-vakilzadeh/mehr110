@@ -60,11 +60,11 @@ function App() {
     <div style={{ maxWidth: 1260, margin: '0 auto', padding: isMobile ? '18px 16px 72px' : '28px 32px 80px' }}>
       {/* ---- quiet header ---- */}
       <header style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'flex-end', justifyContent: 'space-between', gap: 16, marginBottom: isMobile ? 18 : 28, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <img src="logo.png" alt="صندوق مهر۱۱۰" width={40} height={40} style={{ borderRadius: 11, display: 'block', flex: 'none' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
+          <img src="logo.png" alt="صندوق مهر۱۱۰" width={52} height={52} style={{ borderRadius: 14, display: 'block', flex: 'none', boxShadow: '0 1px 3px oklch(0.4 0.02 70 / 0.12)' }} />
           <div>
-            <h1 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 30, color: 'var(--ink)', lineHeight: 1.15, whiteSpace: 'nowrap' }}>صندوق مهر۱۱۰</h1>
-            <div style={{ fontSize: 13.5, color: 'var(--ink-3)', marginTop: 5 }}>حلقهٔ پس‌انداز و وام خانوادگی</div>
+            <h1 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 27, color: 'var(--ink)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>صندوق مهر۱۱۰</h1>
+            <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 3 }}>حلقهٔ پس‌انداز و وام خانوادگی</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -127,10 +127,7 @@ function App() {
       <StatRow fund={fund}
         onMembers={() => { setView('members'); setTimeout(scrollToMembers, 60); }} />
 
-      {/* ---- share purchase tracker ---- */}
-      <PurchaseTracker fund={fund} isMobile={isMobile} />
-
-      {/* ---- workhorse: members / families ---- */}
+      {/* ---- workhorse: members / families (purchasing is now a filter inside) ---- */}
       <div id="members-section" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, margin: '40px 0 16px', scrollMarginTop: 16 }}>
         <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)', lineHeight: 1.3, whiteSpace: 'nowrap' }}>
           {view === 'members' ? 'همهٔ اعضا' : 'همهٔ خانواده‌ها'}

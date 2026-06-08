@@ -11,6 +11,7 @@ const COLS = [
 ];
 
 const ALL_FAM = 'همهٔ خانواده‌ها';
+const PAGE = 12; // rows per page
 
 function SortHead({ col, sortKey, sortDir, onSort }) {
   const active = sortKey === col.key;
@@ -174,9 +175,12 @@ function MembersTable({ fund, isMobile }) {
   const [query, setQuery] = React.useState('');
   const [family, setFamily] = React.useState(ALL_FAM);
   const [behindOnly, setBehindOnly] = React.useState(false);
+  const [purchasingOnly, setPurchasingOnly] = React.useState(false);
   const [sortKey, setSortKey] = React.useState('seedBalance');
   const [sortDir, setSortDir] = React.useState('desc');
   const [open, setOpen] = React.useState(null);
+  const [page, setPage] = React.useState(0);
+  const clearAll = () => { setQuery(''); setFamily(ALL_FAM); setBehindOnly(false); setPurchasingOnly(false); };
 
   React.useEffect(() => {
     const h = () => { setBehindOnly(true); setQuery(''); setFamily(ALL_FAM); };
@@ -194,6 +198,7 @@ function MembersTable({ fund, isMobile }) {
   const rows = React.useMemo(() => {
     let r = fund.members.slice();
     if (behindOnly) r = r.filter((m) => m.behind);
+    if (purchasingOnly) r = r.filter((m) => m.pendingShare);
     if (family !== ALL_FAM) r = r.filter((m) => m.family === family);
     if (query.trim()) {
       const q = query.trim().toLowerCase();
@@ -211,7 +216,13 @@ function MembersTable({ fund, isMobile }) {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return r;
-  }, [fund.members, behindOnly, family, query, sortKey, sortDir]);
+  }, [fund.members, behindOnly, purchasingOnly, family, query, sortKey, sortDir]);
+
+  // pagination — reset to first page whenever the filtered set changes
+  React.useEffect(() => { setPage(0); }, [query, family, behindOnly, purchasingOnly, sortKey, sortDir]);
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE));
+  const curPage = Math.min(page, pageCount - 1);
+  const pageRows = rows.slice(curPage * PAGE, curPage * PAGE + PAGE);
 
   const chip = (label, onClear) => (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 500, color: 'var(--warn)', background: 'var(--warn-soft)', border: '1px solid var(--warn-line)', borderRadius: 99, padding: '5px 9px 5px 11px' }}>
@@ -236,6 +247,15 @@ function MembersTable({ fund, isMobile }) {
           </select>
           <Icon name="chevron" size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)', pointerEvents: 'none' }} />
         </div>
+        <button onClick={() => setPurchasingOnly((v) => !v)} title="فقط اعضای در حال تأمین سهم" style={{
+          height: 40, padding: '0 13px', borderRadius: 10, cursor: 'pointer', font: 'inherit', flex: 'none',
+          display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap',
+          border: `1px solid ${purchasingOnly ? 'var(--accent-line)' : 'var(--hair)'}`,
+          background: purchasingOnly ? 'var(--accent-soft)' : 'var(--surface)',
+          color: purchasingOnly ? 'var(--accent)' : 'var(--ink-2)',
+        }}>
+          <Icon name="arrowUpRight" size={15} stroke={1.7} /> در حال تأمین
+        </button>
         {behindOnly && chip('عقب‌افتاده در پرداخت', () => setBehindOnly(false))}
         <div style={{ marginInlineStart: 'auto', fontSize: 13, color: 'var(--ink-3)' }}>
           {fmt(rows.length)} از {fmt(fund.members.length)} عضو
@@ -244,7 +264,7 @@ function MembersTable({ fund, isMobile }) {
 
       {/* table (desktop) / cards (mobile) */}
       {isMobile ? (
-        <MemberCards rows={rows} open={open} setOpen={setOpen} noMembers={fund.members.length === 0} onClear={() => { setQuery(''); setFamily(ALL_FAM); setBehindOnly(false); }} />
+        <MemberCards rows={pageRows} open={open} setOpen={setOpen} noMembers={fund.members.length === 0} onClear={clearAll} />
       ) : (
       <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
@@ -268,14 +288,14 @@ function MembersTable({ fund, isMobile }) {
                       ? <a href="add-member.html" style={{ marginTop: 4, height: 34, padding: '0 14px', borderRadius: 8, background: 'var(--accent)', color: 'var(--surface)', textDecoration: 'none', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>افزودن عضو</a>
                       : <>
                         <div style={{ fontSize: 13 }}>نام دیگری را امتحان کنید یا فیلترها را پاک کنید.</div>
-                        <button onClick={() => { setQuery(''); setFamily(ALL_FAM); setBehindOnly(false); }}
+                        <button onClick={clearAll}
                           style={{ marginTop: 4, height: 34, padding: '0 14px', borderRadius: 8, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>پاک کردن همه</button>
                       </>}
                   </div>
                 </td>
               </tr>
             )}
-            {rows.map((m) => {
+            {pageRows.map((m) => {
               const isOpen = open === m.id;
               return (
                 <React.Fragment key={m.id}>
@@ -333,6 +353,23 @@ function MembersTable({ fund, isMobile }) {
         </table>
       </div>
       )}
+
+      {/* pager */}
+      {pageCount > 1 && (() => {
+        const btn = (disabled) => ({
+          height: 36, padding: '0 16px', borderRadius: 9, border: '1px solid var(--hair)',
+          background: 'var(--surface)', color: disabled ? 'var(--ink-3)' : 'var(--ink)',
+          cursor: disabled ? 'default' : 'pointer', font: 'inherit', fontSize: 13.5, fontWeight: 600,
+          opacity: disabled ? 0.5 : 1,
+        });
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginTop: 16 }}>
+            <button disabled={curPage === 0} onClick={() => setPage((p) => Math.max(0, p - 1))} style={btn(curPage === 0)}>قبلی</button>
+            <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>صفحهٔ {faDigits(curPage + 1)} از {faDigits(pageCount)}</span>
+            <button disabled={curPage >= pageCount - 1} onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} style={btn(curPage >= pageCount - 1)}>بعدی</button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
