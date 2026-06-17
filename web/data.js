@@ -20,7 +20,7 @@
   const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
   const rint = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
 
-  const PAR = 5780;            // minimum member savings per share
+  const PAR = 5780000;         // minimum member savings per share
   const MEMBERSHIP = 60;       // monthly fee (informational)
   const DEFAULT_INST = 20;     // default installments
   const LOAN_PER_SHARE = 60000; // loan capacity per fully-funded share
