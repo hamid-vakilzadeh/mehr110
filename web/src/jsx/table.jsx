@@ -409,7 +409,7 @@ function MembersTable({ fund, isMobile }) {
                       opacity: dragId === m.id ? 0.5 : 1,
                     }}>
                     <td style={{ padding: '13px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, rowGap: 5, minWidth: 0, flexWrap: 'wrap' }}>
                         {dragEnabled && m.status === 'active' && <span title="برای جابه‌جایی بکشید" style={{ display: 'inline-flex', color: 'var(--ink-3)', flex: 'none' }}><Icon name="grip" size={15} /></span>}
                         {m.behind
                           ? <Icon name="alert" size={15} stroke={1.7} style={{ color: 'var(--warn)' }} />
