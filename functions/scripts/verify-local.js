@@ -202,6 +202,13 @@ const check = (name, cond, extra) =>
   check("delete seed #2 → savings 12000", savingsOf(mid) === 12000, savingsOf(mid));
   check("TRX-2 index released on delete", !store.has("bankTxns/TRX-2"));
 
+  // -- fund one full share so the member clears the real eligibility gate --
+  // (parValue is large; the loan amounts below stay small purely to test the
+  //  balance arithmetic of issue/installment/edit/delete.)
+  await run(idx.paymentsRecordSeed, { memberId: mid, amount: par, bankTxnId: "FUND-PAR" });
+  const eligibleSavings = 12000 + par;
+  check("funded to par → loan-eligible", savingsOf(mid) === eligibleSavings, savingsOf(mid));
+
   // -- loans: issue / installment / edit / delete --
   const loan = await run(idx.loansIssue, { memberId: mid, principal: 6000, termMonths: 6, bankTxnId: "LOAN-1" });
   check("loan issued (eligible path)", !!loan.loanId && outstandingOf(mid, loan.loanId) === 6000, loan);
@@ -218,7 +225,7 @@ const check = (name, cond, extra) =>
   check("loan deleted (doc gone)", !store.has(`members/${mid}/loan/${loan.loanId}`));
   check("member.loanReceived reset false", store.get("members/" + mid)?.loanReceived === false);
   check("LOAN-1 index released", !store.has("bankTxns/LOAN-1"));
-  check("savings untouched by loan delete", savingsOf(mid) === 12000, savingsOf(mid));
+  check("savings untouched by loan delete", savingsOf(mid) === eligibleSavings, savingsOf(mid));
 
   console.log(failures === 0 ? "\nALL INVARIANTS PASS ✓" : `\n${failures} INVARIANT(S) FAILED ✗`);
   process.exit(failures === 0 ? 0 : 1);
