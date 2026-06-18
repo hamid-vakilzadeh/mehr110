@@ -43,6 +43,7 @@ function Segmented({ value, onChange, options }) {
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [view, setView] = React.useState('members');
+  const [showReports, setShowReports] = React.useState(false);
   const fund = window.FUND;
   const isMobile = useIsMobile();
   const scrollToMembers = () => {
@@ -67,6 +68,13 @@ function App() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={() => setShowReports(true)} title="گزارش‌ها" aria-label="گزارش‌ها" style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40,
+            borderRadius: 10, border: '1px solid var(--hair)', background: 'var(--surface)', cursor: 'pointer',
+            color: 'var(--ink-2)', flex: 'none', font: 'inherit',
+          }}>
+            <Icon name="download" size={18} stroke={1.7} />
+          </button>
           <a href="settings.html" title="تنظیمات" aria-label="تنظیمات" style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40,
             borderRadius: 10, border: '1px solid var(--hair)', background: 'var(--surface)', textDecoration: 'none',
@@ -131,6 +139,9 @@ function App() {
       </div>
 
       {view === 'members' ? <MembersTable fund={fund} isMobile={isMobile} /> : <FamilyView fund={fund} isMobile={isMobile} />}
+
+      {/* ---- reports menu (fund-level PDF reports) ---- */}
+      {showReports && <ReportsMenu onClose={() => setShowReports(false)} />}
 
       {/* ---- Tweaks ---- */}
       <TweaksPanel>

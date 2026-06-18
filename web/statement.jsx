@@ -245,6 +245,21 @@ function Statement() {
   const [deleted, setDeleted] = React.useState(false);
   const [editLoan, setEditLoan] = React.useState(false);
   const [delLoan, setDelLoan] = React.useState(false);
+  const [pdfBusy, setPdfBusy] = React.useState(false);
+  const downloadPdf = React.useCallback(async () => {
+    setPdfBusy(true);
+    try {
+      if (window.API && window.API.reportsEnabled && window.API.reportsEnabled()) {
+        await window.API.downloadReport('member-statement', { m: m.id }, { printFallback: true });
+      } else {
+        window.print(); // demo / offline fallback
+      }
+    } catch (e) {
+      alert('خطا در دانلود گزارش: ' + (e && e.message ? e.message : e));
+    } finally {
+      setPdfBusy(false);
+    }
+  }, [m && m.id]);
   const [, force] = React.useReducer((x) => x + 1, 0);
   const reload = React.useCallback(async () => {
     if (window.API && window.API.live && window.API.loadFund) { try { await window.API.loadFund(); } catch (e) {} }
@@ -287,8 +302,8 @@ function Statement() {
           <Icon name="arrowR" size={15} stroke={1.8} /> داشبورد
         </a>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => window.print()} title="چاپ یا ذخیره به‌صورت PDF" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 13px', borderRadius: 9, border: 'none', background: 'var(--accent)', cursor: 'pointer', font: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--surface)', whiteSpace: 'nowrap' }}>
-            <Icon name="download" size={14} stroke={1.9} /> چاپ / PDF
+          <button onClick={downloadPdf} disabled={pdfBusy} title="دانلود صورت‌حساب به‌صورت PDF" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 13px', borderRadius: 9, border: 'none', background: 'var(--accent)', cursor: pdfBusy ? 'default' : 'pointer', opacity: pdfBusy ? 0.7 : 1, font: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--surface)', whiteSpace: 'nowrap' }}>
+            <Icon name="download" size={14} stroke={1.9} /> {pdfBusy ? 'در حال ساخت…' : 'دانلود PDF'}
           </button>
           <a href={`add-member.html?edit=${m.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 13px', borderRadius: 9, border: '1px solid var(--hair)', background: 'var(--surface)', textDecoration: 'none', fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap' }}>
             <Icon name="edit" size={14} stroke={1.8} /> ویرایش

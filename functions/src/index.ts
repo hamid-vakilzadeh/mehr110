@@ -838,3 +838,7 @@ export const dashboard = onCall(async (req) => {
 
 // seed (admin-only) lives in its own module
 export { seedDatabase } from "./seed";
+
+// reports API (HTTP, admin-only) — isolated function with its own heavy
+// runtime options (Chromium); see reports/http.ts. All other endpoints are onCall.
+export { reports } from "./reports/http";

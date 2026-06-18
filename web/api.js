@@ -209,6 +209,45 @@
     signIn: signIn,
     signOut: signOut,
 
+    // ---------- reports API (HTTP endpoint behind /reports/** rewrite) ----------
+    // true only when connected to the live backend (demo mode has no server).
+    reportsEnabled: function () { return LIVE; },
+    // Fetch a report PDF (Bearer-authenticated) and open it in a new tab.
+    // type: 'member-statement' | 'fund-summary'; params: { m: id } etc.
+    // opts.printFallback: in demo mode, fall back to window.print().
+    downloadReport: async function (type, params, opts) {
+      opts = opts || {};
+      if (!LIVE) {
+        if (opts.printFallback) { window.print(); return { demo: true }; }
+        throw new Error("گزارش‌ها فقط در حالت متصل به سرور در دسترس است.");
+      }
+      // reserve the tab inside the click gesture so the popup blocker allows it,
+      // then navigate it to the blob once the PDF is fetched.
+      var win = window.open("", "_blank");
+      try {
+        if (!fb.auth) await authReady;
+        var user = (fb.auth && fb.auth.currentUser) || window.__fbUser;
+        if (!user) throw new Error("ابتدا وارد شوید.");
+        var token = await user.getIdToken();
+        var qs = new URLSearchParams(params || {}).toString();
+        var res = await fetch("/reports/" + type + (qs ? "?" + qs : ""), {
+          headers: { Authorization: "Bearer " + token },
+        });
+        if (!res.ok) {
+          var msg = "خطا در ساخت گزارش (" + res.status + ")";
+          try { var j = await res.json(); if (j && j.error) msg = j.error; } catch (e) {}
+          throw new Error(msg);
+        }
+        var url = URL.createObjectURL(await res.blob());
+        if (win) win.location = url; else window.open(url, "_blank");
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+        return { ok: true };
+      } catch (e) {
+        if (win) { try { win.close(); } catch (e2) {} }
+        throw e;
+      }
+    },
+
     createMember: function (d) { return call("membersCreate", d); },
     updateMember: function (d) { return call("membersUpdate", d); },
     deleteMember: function (id) { return call("membersDelete", { id: id }); },

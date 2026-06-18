@@ -2,7 +2,9 @@
   "hosting": {
     "public": "web",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "**/screenshots/**", "**/*.jsx", "web/build.mjs", "web/package.json", "web/package-lock.json"],
-    "rewrites": [],
+    "rewrites": [
+      { "source": "/reports/**", "function": "reports" }
+    ],
     "cleanUrls": true,
     "trailingSlash": false,
     "headers": [
