@@ -1,25 +1,36 @@
-/* Precompile the JSX prototypes into plain, minified JS so the browser no
-   longer needs @babel/standalone (3 MB) or runtime transpilation.
+/* Build the deployable site: src/ (hand-edited source) -> public/ (generated).
 
-   We TRANSFORM each .jsx -> .js (classic JSX -> React.createElement, React/
-   ReactDOM stay global from the production CDN). We minify whitespace + syntax
-   but DO NOT rename identifiers — the files are loaded as classic scripts that
-   share global scope (e.g. ui.js defines `fmt`/`Icon`, charts.js uses them), so
-   top-level names must be preserved across files.
+   • Compile each src/jsx/*.jsx -> public/<name>.js  (classic JSX -> React.createElement;
+     React/ReactDOM stay global from the production CDN). Whitespace+syntax minified,
+     identifiers PRESERVED — files load as classic scripts sharing global scope
+     (e.g. ui.js defines `fmt`/`Icon`, charts.js uses them).
+   • Copy the hand-written js (src/js), styles (src/styles), pages (src/pages) and
+     assets (src/assets) FLAT into public/ so all existing same-dir relative refs
+     (<script src="api.js">, href="tokens.css", logo.png, manifest, favicons) keep working.
+   • public/ is 100% generated and git-ignored; never edit it. Edit src/ then rebuild.
+   • src/screenshots is dev-only (was never served) and is intentionally NOT copied.
 
    Run:  npm --prefix web run build
 */
 import * as esbuild from "esbuild";
-import { readdirSync } from "fs";
+import { readdirSync, rmSync, mkdirSync, copyFileSync, existsSync } from "fs";
+import { join } from "path";
 
-const files = readdirSync(".").filter((f) => f.endsWith(".jsx"));
+const SRC = "src";
+const OUT = "public";
 
-let total = 0;
-for (const file of files) {
-  const out = file.replace(/\.jsx$/, ".js");
+// fresh, deterministic output dir
+rmSync(OUT, { recursive: true, force: true });
+mkdirSync(OUT, { recursive: true });
+
+// 1) compile jsx -> public/*.js
+const jsxDir = join(SRC, "jsx");
+const jsxFiles = readdirSync(jsxDir).filter((f) => f.endsWith(".jsx"));
+let compiled = 0;
+for (const file of jsxFiles) {
   await esbuild.build({
-    entryPoints: [file],
-    outfile: out,
+    entryPoints: [join(jsxDir, file)],
+    outfile: join(OUT, file.replace(/\.jsx$/, ".js")),
     bundle: false,            // transform only — keep the multi-script structure
     minifyWhitespace: true,
     minifySyntax: true,
@@ -29,7 +40,23 @@ for (const file of files) {
     legalComments: "none",
     target: ["es2018"],
   });
-  total++;
-  console.log("  built", out);
+  compiled++;
+  console.log("  built", file, "-> public/" + file.replace(/\.jsx$/, ".js"));
 }
-console.log(`Compiled ${total} JSX file(s) -> JS.`);
+
+// 2) copy static source (hand-written js, styles, pages, assets) FLAT into public/
+function copyFlat(dir) {
+  if (!existsSync(dir)) return 0;
+  let n = 0;
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    if (e.isFile()) { copyFileSync(join(dir, e.name), join(OUT, e.name)); n++; }
+  }
+  return n;
+}
+const copied =
+  copyFlat(join(SRC, "js")) +
+  copyFlat(join(SRC, "styles")) +
+  copyFlat(join(SRC, "pages")) +
+  copyFlat(join(SRC, "assets"));
+
+console.log(`Compiled ${compiled} JSX -> public/*.js; copied ${copied} static file(s) into public/.`);

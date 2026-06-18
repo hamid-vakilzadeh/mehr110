@@ -42,10 +42,11 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json.bak
 
-# TypeScript build output
+# Build output (generated — never edit or commit)
 functions/lib/
 functions/.tsbuildinfo
 *.tsbuildinfo
+web/public/
 
 # OS / editor
 .DS_Store

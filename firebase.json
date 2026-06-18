@@ -1,7 +1,8 @@
 {
   "hosting": {
-    "public": "web",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "**/screenshots/**", "**/*.jsx", "web/build.mjs", "web/package.json", "web/package-lock.json"],
+    "public": "web/public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "predeploy": ["npm --prefix web run build"],
     "rewrites": [
       { "source": "/reports/**", "function": "reports" }
     ],
@@ -9,7 +10,7 @@
     "trailingSlash": false,
     "headers": [
       {
-        "source": "**/*.@(jsx|js|css)",
+        "source": "**/*.@(js|css)",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       }
     ]
