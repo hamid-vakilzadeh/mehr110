@@ -65,4 +65,32 @@ function Composition({ fund }) {
   );
 }
 
-Object.assign(window, { Panel, Composition });
+/* loading placeholder mirroring Composition: a donut ring + 2-col legend. */
+function ChartSkeleton({ isMobile }) {
+  const m = isMobile === undefined ? useIsMobile() : isMobile;
+  const SIZE = m ? 168 : 188;
+  const HOLE = SIZE - (m ? 36 : 40); // ring thickness = SW*2
+  const col = (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+      <Skel width={86} height={12} radius={5} />
+      <Skel width={70} height={17} radius={5} />
+    </div>
+  );
+  return (
+    <Panel>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '8px 0 4px' }}>
+        <div style={{ position: 'relative', width: SIZE, height: SIZE }}>
+          <Skel width={SIZE} height={SIZE} circle />
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: HOLE, height: HOLE, borderRadius: 999, background: 'var(--surface)' }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'stretch', justifyContent: 'center', width: '100%', maxWidth: 360 }}>
+          {col}
+          <span style={{ width: 1, background: 'var(--hair)', margin: '2px 4px' }} />
+          {col}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+Object.assign(window, { Panel, Composition, ChartSkeleton });

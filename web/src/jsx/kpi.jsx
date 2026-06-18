@@ -25,7 +25,7 @@ function AttentionCard({ fund, onAttention }) {
 
 /* StatRow — three equal cards in one row: current loans, members, shares.
    No descriptive sub-line; money value wraps its unit so it never leaks. */
-function StatRow({ fund, onMembers }) {
+function StatRow({ fund, onMembers, isMobile }) {
   const k = fund.kpis;
   const card = {
     background: 'var(--surface)', border: '1px solid var(--hair)',
@@ -35,7 +35,7 @@ function StatRow({ fund, onMembers }) {
   const label = { fontSize: 11.5, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--ink-3)' };
   const num = { fontSize: 24, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.1 };
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginTop: 14 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 14, marginTop: 14 }}>
       <div style={card}>
         <div style={label}>وام‌های جاری</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 5, rowGap: 0, minWidth: 0 }}>
@@ -47,7 +47,7 @@ function StatRow({ fund, onMembers }) {
         <div style={label}>اعضا</div>
         <span className="mono" style={num}>{fmt(k.memberCount)}</span>
       </div>
-      <div style={card}>
+      <div style={{ ...card, ...(isMobile ? { gridColumn: '1 / -1' } : null) }}>
         <div style={label}>تعداد سهم‌ها</div>
         <span className="mono" style={num}>{fmt(k.totalShares)}</span>
       </div>
@@ -55,4 +55,23 @@ function StatRow({ fund, onMembers }) {
   );
 }
 
-Object.assign(window, { AttentionCard, StatRow });
+/* loading placeholder mirroring StatRow's grid + cards (no layout shift). */
+function StatRowSkeleton({ isMobile }) {
+  const card = {
+    background: 'var(--surface)', border: '1px solid var(--hair)',
+    borderRadius: 'var(--radius)', padding: '18px 20px',
+    display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0,
+  };
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 14, marginTop: 14 }}>
+      {[0, 1, 2].map((i) => (
+        <div key={i} style={{ ...card, ...(isMobile && i === 2 ? { gridColumn: '1 / -1' } : null) }}>
+          <Skel width={84} height={11} radius={5} />
+          <Skel width={104} height={24} radius={6} style={{ marginTop: 2 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+Object.assign(window, { AttentionCard, StatRow, StatRowSkeleton });

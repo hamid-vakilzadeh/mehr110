@@ -495,4 +495,91 @@ function MembersTable({ fund, isMobile }) {
   );
 }
 
-Object.assign(window, { MembersTable });
+/* ---- loading placeholders (mirror the desktop table + mobile cards) ---- */
+function MemberRowSkeleton() {
+  const td = { padding: '13px 14px' };
+  const tdR = { ...td, textAlign: 'right' };
+  return (
+    <tr style={{ borderBottom: '1px solid var(--hair-2)' }}>
+      <td style={td}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <span style={{ width: 15, flex: 'none' }} />
+          <Skel width={120} height={13} radius={5} />
+        </div>
+      </td>
+      <td style={td}><Skel width={70} height={13} radius={5} /></td>
+      <td style={tdR}><Skel width={24} height={13} radius={5} style={{ display: 'inline-block' }} /></td>
+      <td style={td}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Skel height={6} radius={99} style={{ flex: 1, minWidth: 30 }} />
+          <Skel width={30} height={12} radius={5} />
+        </div>
+      </td>
+      <td style={tdR}><Skel width={74} height={14} radius={5} style={{ display: 'inline-block' }} /></td>
+      <td style={td}><Skel width={56} height={14} radius={99} /></td>
+      <td style={{ padding: '13px 0 13px 12px' }}><Skel width={16} height={16} radius={5} /></td>
+    </tr>
+  );
+}
+
+function TableSkeleton({ rows = 8 }) {
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <colgroup>
+          <col /><col style={{ width: '120px' }} /><col style={{ width: '78px' }} /><col style={{ width: '128px' }} /><col style={{ width: '120px' }} /><col style={{ width: '110px' }} /><col style={{ width: '40px' }} />
+        </colgroup>
+        <thead>
+          <tr style={{ borderBottom: '1px solid var(--hair)', background: 'var(--surface-2)', height: 42 }}>
+            {[44, 60, 48, 70, 56, 44].map((w, i) => (
+              <th key={i} style={{ textAlign: 'right', padding: '0 14px', verticalAlign: 'middle' }}><Skel width={w} height={12} radius={5} /></th>
+            ))}
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: rows }).map((_, i) => <MemberRowSkeleton key={i} />)}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CardListSkeleton({ rows = 6 }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Skel height={15} radius={5} style={{ flex: 1, maxWidth: 180 }} />
+              <Skel width={15} height={15} radius={5} />
+            </div>
+            <Skel width={120} height={12} radius={5} style={{ marginTop: 8 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
+              <Skel height={7} radius={99} style={{ flex: 1 }} />
+              <Skel width={72} height={16} radius={5} />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MembersTableSkeleton({ isMobile }) {
+  const m = isMobile === undefined ? useIsMobile() : isMobile;
+  return (
+    <div>
+      {/* toolbar placeholder so the real search/filters don't shift the list */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+        <Skel height={40} radius={10} style={{ flex: '1 1 260px', maxWidth: 340 }} />
+        {!m && <Skel width={140} height={40} radius={10} />}
+        {!m && <Skel width={120} height={40} radius={10} />}
+      </div>
+      {m ? <CardListSkeleton /> : <TableSkeleton />}
+    </div>
+  );
+}
+
+Object.assign(window, { MembersTable, MembersTableSkeleton, TableSkeleton, CardListSkeleton });

@@ -87,4 +87,44 @@ function useIsMobile(bp) {
   return m;
 }
 
-Object.assign(window, { fmt, faPct, faDigits, Money, Icon, StatusPill, useIsMobile });
+// ---- skeleton placeholders (shimmer via the .skel class in tokens.css) ----
+function Skel({ width, height = 14, radius, circle = false, className = '', style = {} }) {
+  const px = (v) => (typeof v === 'number' ? v + 'px' : v);
+  return (
+    <span className={`skel${circle ? ' skel-circle' : ''} ${className}`}
+      style={{ width: px(width), height: px(height), ...(radius != null ? { borderRadius: px(radius) } : null), ...style }} />
+  );
+}
+function SkelText({ width = '100%', height = 12, lines = 1, gap = 7, lastWidth = '60%', style = {} }) {
+  if (lines <= 1) return <Skel width={width} height={height} radius={5} style={style} />;
+  return (
+    <span style={{ display: 'flex', flexDirection: 'column', gap, ...style }}>
+      {Array.from({ length: lines }).map((_, i) => (
+        <Skel key={i} height={height} radius={5} width={i === lines - 1 ? lastWidth : width} />
+      ))}
+    </span>
+  );
+}
+function SkelCircle({ size = 28, style = {} }) {
+  return <Skel width={size} height={size} circle style={style} />;
+}
+
+// ---- reactive access to window.FUND across the classic (no-bundler) scripts ----
+// Returns { fund, ready }; re-renders when api.js dispatches 'fund:updated'.
+// `ready` is derived every render (self-heals a missed event); a fundVersion
+// ref-compare in the effect closes the mount→effect race.
+function useFund() {
+  const [, force] = React.useReducer((x) => x + 1, 0);
+  const seen = React.useRef((window.API && window.API.fundVersion) || 0);
+  React.useEffect(() => {
+    const onUpdate = () => force();
+    window.addEventListener('fund:updated', onUpdate);
+    const v = (window.API && window.API.fundVersion) || 0;
+    if (v !== seen.current) { seen.current = v; force(); } // fired before listener attached
+    return () => window.removeEventListener('fund:updated', onUpdate);
+  }, []);
+  const ready = window.API ? (!!window.API.fundReady && !!window.FUND) : !!window.FUND;
+  return { fund: window.FUND, ready };
+}
+
+Object.assign(window, { fmt, faPct, faDigits, Money, Icon, StatusPill, useIsMobile, Skel, SkelText, SkelCircle, useFund });

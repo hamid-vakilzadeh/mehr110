@@ -141,12 +141,19 @@
     };
   }
 
+  // Notify any mounted UI that window.FUND changed (render-first / refresh).
+  function broadcastFund() {
+    if (window.API) { window.API.fundReady = true; window.API.fundVersion = (window.API.fundVersion || 0) + 1; }
+    try { window.dispatchEvent(new Event("fund:updated")); } catch (e) {}
+  }
+
   async function loadFund() {
     if (!LIVE) return window.FUND; // demo: data.js already set it
     // NO demo fallback in live mode — the caller (boot) handles failures by
     // sending the user to login, so non-admins never see the demo dataset.
     var payload = await call("dashboard");
     window.FUND = assembleFund(payload);
+    broadcastFund();
     return window.FUND;
   }
 
@@ -157,22 +164,33 @@
   }
 
   // ---------- boot: wait for auth (live) + admin gate + data, then render ----------
-  async function boot(render) {
-    if (LIVE) {
-      var user = await authReady;
-      var embedded = false;
-      try { embedded = window.top !== window.self; } catch (e) { embedded = true; }
-      if (!embedded) {
-        if (!user) return; // auth.js is redirecting to login
-        // ADMIN-ONLY: bounce any signed-in non-admin back to login (no demo, no data)
-        if (!(await isAdmin(user))) { await signOut(); return; }
-      }
-      try {
-        await loadFund();
-      } catch (e) {
+  // opts.eager: render the shell + skeletons IMMEDIATELY after the admin gate and
+  // load data in the background (components re-render on 'fund:updated'). Without
+  // it, behavior is unchanged (await data, then render) — used by the form pages.
+  async function boot(render, opts) {
+    opts = opts || {};
+    if (!LIVE) { if (window.API) window.API.fundReady = true; render(); return; } // demo: FUND already set
+    var user = await authReady;
+    var embedded = false;
+    try { embedded = window.top !== window.self; } catch (e) { embedded = true; }
+    if (!embedded) {
+      if (!user) return; // auth.js is redirecting to login
+      // ADMIN-ONLY: bounce any signed-in non-admin back to login (no demo, no data)
+      if (!(await isAdmin(user))) { await signOut(); return; }
+    }
+    if (opts.eager) {
+      render(); // mount the shell + skeletons now; data fills in on 'fund:updated'
+      loadFund().catch(function (e) {
         console.error("dashboard load failed:", e);
-        if (!embedded) { location.replace("index.html"); return; } // never render demo in live
-      }
+        if (!embedded) { location.replace("index.html"); } // never render demo in live
+      });
+      return;
+    }
+    try {
+      await loadFund();
+    } catch (e) {
+      console.error("dashboard load failed:", e);
+      if (!embedded) { location.replace("index.html"); return; } // never render demo in live
     }
     render();
   }
@@ -203,6 +221,10 @@
     live: LIVE,
     boot: boot,
     loadFund: loadFund,
+    // reactivity for render-first pages (see useFund() in ui.jsx)
+    fundReady: !LIVE, // demo: ready synchronously; live: false until first load
+    fundVersion: 0,
+    reloadFund: function () { return loadFund().catch(function () {}); },
     call: call,
     authReady: LIVE ? authReady : Promise.resolve(null),
     jalaliToMs: jalaliToMs,

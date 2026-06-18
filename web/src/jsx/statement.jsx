@@ -237,9 +237,45 @@ function Receipts({ title, rows, member, onChanged }) {
   );
 }
 
+/* loading placeholder mirroring the statement's card stack (no layout shift). */
+function StatementSkeleton() {
+  const card = { background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)' };
+  return (
+    <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px 64px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <Skel width={80} height={20} radius={6} />
+        <div style={{ display: 'flex', gap: 8 }}><Skel width={96} height={34} radius={9} /><Skel width={78} height={34} radius={9} /></div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 4 }}>
+        <Skel width={52} height={52} radius={14} />
+        <div style={{ flex: 1 }}>
+          <Skel width={180} height={26} radius={6} />
+          <Skel width={120} height={13} radius={5} style={{ marginTop: 8 }} />
+        </div>
+      </div>
+      <div style={{ ...card, padding: '22px 24px' }}>
+        <Skel width={130} height={12} radius={5} />
+        <Skel width={220} height={42} radius={8} style={{ marginTop: 10 }} />
+        <div style={{ display: 'flex', gap: 24, marginTop: 16 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i}><Skel width={48} height={11} radius={5} /><Skel width={62} height={17} radius={5} style={{ marginTop: 6 }} /></div>
+          ))}
+        </div>
+      </div>
+      <div style={{ ...card, padding: '18px 20px' }}>
+        <Skel width={120} height={13} radius={5} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
+          {[0, 1, 2, 3].map((i) => <Skel key={i} height={52} radius={9} />)}
+        </div>
+      </div>
+      {[0, 1].map((i) => <Skel key={i} height={52} radius={14} />)}
+    </div>
+  );
+}
+
 function Statement() {
-  const fund = window.FUND;
-  const m = pickMember(fund);
+  // hooks first (unconditional) — then the !ready guard, then read the member.
+  const { fund, ready } = useFund();
   const isMobile = useIsMobile();
   const [confirmDel, setConfirmDel] = React.useState(false);
   const [deleted, setDeleted] = React.useState(false);
@@ -247,10 +283,12 @@ function Statement() {
   const [delLoan, setDelLoan] = React.useState(false);
   const [pdfBusy, setPdfBusy] = React.useState(false);
   const downloadPdf = React.useCallback(async () => {
+    const target = pickMember(window.FUND);
+    if (!target) return;
     setPdfBusy(true);
     try {
       if (window.API && window.API.reportsEnabled && window.API.reportsEnabled()) {
-        await window.API.downloadReport('member-statement', { m: m.id }, { printFallback: true });
+        await window.API.downloadReport('member-statement', { m: target.id }, { printFallback: true });
       } else {
         window.print(); // demo / offline fallback
       }
@@ -259,12 +297,16 @@ function Statement() {
     } finally {
       setPdfBusy(false);
     }
-  }, [m && m.id]);
+  }, []);
   const [, force] = React.useReducer((x) => x + 1, 0);
   const reload = React.useCallback(async () => {
     if (window.API && window.API.live && window.API.loadFund) { try { await window.API.loadFund(); } catch (e) {} }
     force();
   }, []);
+
+  if (!ready) return <StatementSkeleton isMobile={isMobile} />;
+
+  const m = pickMember(fund);
 
   if (!m) {
     return (
@@ -487,4 +529,4 @@ function Statement() {
 }
 
 function __mount() { ReactDOM.createRoot(document.getElementById('root')).render(<Statement />); }
-if (window.API && window.API.boot) window.API.boot(__mount); else __mount();
+if (window.API && window.API.boot) window.API.boot(__mount, { eager: true }); else __mount();

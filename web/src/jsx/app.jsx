@@ -44,7 +44,7 @@ function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [view, setView] = React.useState('members');
   const [showReports, setShowReports] = React.useState(false);
-  const fund = window.FUND;
+  const { fund, ready } = useFund();
   const isMobile = useIsMobile();
   const scrollToMembers = () => {
     const el = document.getElementById('members-section');
@@ -64,7 +64,7 @@ function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
           <img src="logo.png" alt="صندوق مهر۱۱۰" width={52} height={52} style={{ borderRadius: 14, display: 'block', flex: 'none', boxShadow: '0 1px 3px oklch(0.4 0.02 70 / 0.12)' }} />
           <div>
-            <h1 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 27, color: 'var(--ink)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>صندوق مهر۱۱۰</h1>
+            <h1 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: isMobile ? 22 : 27, color: 'var(--ink)', lineHeight: 1.2 }}>صندوق مهر۱۱۰</h1>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -113,23 +113,25 @@ function App() {
       })()}
 
       {/* ---- attention alert (only when something needs attention) ---- */}
-      <AttentionCard fund={fund}
-        onAttention={() => { setView('members'); window.dispatchEvent(new Event('focus-behind')); setTimeout(scrollToMembers, 60); }} />
+      {ready && <AttentionCard fund={fund}
+        onAttention={() => { setView('members'); window.dispatchEvent(new Event('focus-behind')); setTimeout(scrollToMembers, 60); }} />}
 
       {/* ---- at a glance (starting section) ---- */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '0 0 16px' }}>
-        <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)', lineHeight: 1.3, whiteSpace: 'nowrap' }}>صندوق در یک نگاه</h2>
+        <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)', lineHeight: 1.3 }}>صندوق در یک نگاه</h2>
         <span style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
       </div>
-      <Composition fund={fund} />
+      {ready ? <Composition fund={fund} /> : <ChartSkeleton isMobile={isMobile} />}
 
       {/* ---- three stat cards, one row, below the chart ---- */}
-      <StatRow fund={fund}
-        onMembers={() => { setView('members'); setTimeout(scrollToMembers, 60); }} />
+      {ready
+        ? <StatRow fund={fund} isMobile={isMobile}
+            onMembers={() => { setView('members'); setTimeout(scrollToMembers, 60); }} />
+        : <StatRowSkeleton isMobile={isMobile} />}
 
       {/* ---- workhorse: members / families (purchasing is now a filter inside) ---- */}
-      <div id="members-section" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, margin: '40px 0 16px', scrollMarginTop: 16 }}>
-        <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)', lineHeight: 1.3, whiteSpace: 'nowrap' }}>
+      <div id="members-section" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, margin: '40px 0 16px', scrollMarginTop: 16, flexWrap: 'wrap' }}>
+        <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)', lineHeight: 1.3 }}>
           {view === 'members' ? 'همهٔ اعضا' : 'همهٔ خانواده‌ها'}
         </h2>
         <Segmented value={view} onChange={setView} options={[
@@ -138,7 +140,9 @@ function App() {
         ]} />
       </div>
 
-      {view === 'members' ? <MembersTable fund={fund} isMobile={isMobile} /> : <FamilyView fund={fund} isMobile={isMobile} />}
+      {!ready
+        ? <MembersTableSkeleton isMobile={isMobile} />
+        : (view === 'members' ? <MembersTable fund={fund} isMobile={isMobile} /> : <FamilyView fund={fund} isMobile={isMobile} />)}
 
       {/* ---- reports menu (fund-level PDF reports) ---- */}
       {showReports && <ReportsMenu onClose={() => setShowReports(false)} />}
@@ -160,4 +164,4 @@ function App() {
 }
 
 function __mount() { ReactDOM.createRoot(document.getElementById('root')).render(<App />); }
-if (window.API && window.API.boot) window.API.boot(__mount); else __mount();
+if (window.API && window.API.boot) window.API.boot(__mount, { eager: true }); else __mount();
