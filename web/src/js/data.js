@@ -111,7 +111,9 @@
     const monthly = Math.round(principal / term);
     const paid = rint(2, term - 2);
     const outstanding = Math.max(0, principal - paid * monthly);
-    m.loan = { principal, term, termMonths: term, monthly, outstanding, installmentsPaid: paid, pct: pct(principal - outstanding, principal) };
+    // issued (paid + 0..4) months ago → some members read as behind on installments
+    const issuedAt = Date.UTC(2026, 5 - (paid + rint(0, 4)), 15);
+    m.loan = { principal, term, termMonths: term, monthly, outstanding, installmentsPaid: paid, issuedAt, pct: pct(principal - outstanding, principal) };
     const shown = Math.min(paid, 10);
     for (let j = 0; j < shown; j++) m.installmentReceipts.push({ no: String(receiptNo++), date: faFullDate.format(new Date(2026, 5 - j, rint(1, 27))), amount: monthly });
   });

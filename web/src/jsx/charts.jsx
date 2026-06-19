@@ -93,4 +93,70 @@ function ChartSkeleton({ isMobile }) {
   );
 }
 
-Object.assign(window, { Panel, Composition, ChartSkeleton });
+/* ---------- بودجهٔ سه ماه آینده — درآمد مورد انتظار ماهانه ---------- */
+function nextMonthLabels(n) {
+  const fmtM = new Intl.DateTimeFormat('fa-IR', { calendar: 'persian', month: 'long' });
+  const base = new Date();
+  const out = [];
+  for (let k = 1; k <= n; k++) out.push(fmtM.format(new Date(base.getFullYear(), base.getMonth() + k, 1)));
+  return out;
+}
+
+/* Stacked bars: expected monthly income = (active members × membership fee)
+   + (installments due that month, i.e. loans that still have ≥k payments left). */
+function BudgetChart({ fund }) {
+  const fee = fund.settings.membershipFee || 0;
+  const activeCount = (fund.members || []).filter((m) => m.status === 'active').length;
+  const membership = activeCount * fee;
+  const loans = (fund.members || []).filter((m) => m.loan && m.loan.status !== 'repaid').map((m) => m.loan);
+
+  const months = [1, 2, 3].map((k) => {
+    const inst = loans.reduce((t, l) => {
+      const term = l.termMonths != null ? l.termMonths : (l.term || 0);
+      const paid = l.installmentsPaid != null ? l.installmentsPaid : Math.round((l.principal - l.outstanding) / (l.monthly || 1));
+      const remaining = Math.max(0, term - paid);
+      return t + (remaining >= k ? (l.monthly || 0) : 0);
+    }, 0);
+    return { membership, inst, total: membership + inst };
+  });
+  const max = Math.max(1, ...months.map((m) => m.total));
+  const labels = nextMonthLabels(3);
+  const AREA = 150; // px max bar height
+
+  const swatch = (color, label) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-2)' }}>
+      <span style={{ width: 10, height: 10, borderRadius: 3, background: color, flex: 'none' }} />{label}
+    </span>
+  );
+
+  return (
+    <Panel>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', gap: 18, height: AREA + 28, padding: '14px 6px 0' }}>
+        {months.map((m, i) => {
+          const h = Math.round((m.total / max) * AREA);
+          const memH = m.total > 0 ? Math.round((m.membership / m.total) * h) : 0;
+          const instH = Math.max(0, h - memH);
+          return (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+              <span className="mono" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap' }}>{fmt(m.total)}</span>
+              <div style={{ width: 48, height: AREA, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                <div style={{ height: h, borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', background: 'var(--surface-2)' }}>
+                  <div style={{ height: instH, background: 'var(--fill-1)' }} title="اقساط" />
+                  <div style={{ height: memH, background: 'var(--accent)' }} title="حق عضویت" />
+                </div>
+              </div>
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)' }}>{labels[i]}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--hair-2)' }}>
+        {swatch('var(--accent)', 'حق عضویت')}
+        {swatch('var(--fill-1)', 'اقساط وام')}
+        <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>تومان در ماه</span>
+      </div>
+    </Panel>
+  );
+}
+
+Object.assign(window, { Panel, Composition, ChartSkeleton, BudgetChart });

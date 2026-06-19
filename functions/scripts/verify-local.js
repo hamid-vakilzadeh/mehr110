@@ -180,6 +180,13 @@ const check = (name, cond, extra) =>
   const { id: mid } = await run(idx.membersCreate, { firstName: "آزمون", lastName: "تراکنش", initialShares: 2 });
   check("created test member", !!mid);
 
+  // -- duplicate-name guard: refuse same first+last unless confirmed --
+  check("duplicate name rejected", await willThrow(run(idx.membersCreate, { firstName: "آزمون", lastName: "تراکنش" })));
+  check("duplicate (ي/ك variant) rejected", await willThrow(run(idx.membersCreate, { firstName: "آزمون", lastName: "تراكنش" })));
+  const dup2 = await run(idx.membersCreate, { firstName: "آزمون", lastName: "تراکنش", confirmDuplicate: true });
+  check("duplicate allowed with confirmDuplicate", !!dup2.id && dup2.id !== mid);
+  await run(idx.membersDelete, { id: dup2.id }); // clean up the confirmed duplicate
+
   // -- seed payments + bankTxnId uniqueness --
   const s1 = await run(idx.paymentsRecordSeed, { memberId: mid, amount: 10000, bankTxnId: "TRX-1" });
   check("seed #1 → savings 10000", savingsOf(mid) === 10000, savingsOf(mid));

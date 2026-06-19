@@ -106,16 +106,13 @@ function AddMember() {
   const [active, setActive] = React.useState(editM ? editM.status === 'active' : true);
   const [tried, setTried] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
+  const [dup, setDup] = React.useState(false); // show the duplicate-name confirm box
 
   const firstInvalid = tried && !first.trim();
   const lastInvalid = tried && !last.trim();
 
-  const submit = async () => {
-    setTried(true);
-    if (!first.trim() || !last.trim()) {
-      document.querySelector('.formcard').scrollIntoView({ block: 'start' });
-      return;
-    }
+  // confirmDuplicate=true is sent only after the admin confirms the duplicate box.
+  const doSubmit = async (confirmDuplicate) => {
     if (window.API && window.API.live) {
       try {
         const dob = (dobY && dobM && dobD) ? window.API.jalaliToMs(dobY, dobM, dobD) : null;
@@ -125,13 +122,25 @@ function AddMember() {
           referredBy: referrer.trim() || null, status: active ? 'active' : 'inactive', shares,
         };
         if (isEdit) { await window.API.updateMember({ id: editM.id, ...payload }); }
-        else { await window.API.createMember({ ...payload, initialShares: shares }); }
+        else { await window.API.createMember({ ...payload, initialShares: shares, confirmDuplicate }); }
       } catch (e) {
+        // server refuses a same-name member unless confirmed → show the confirm box
+        const isDup = !isEdit && e && (e.code === 'already-exists' || (e.details && e.details.code === 'duplicate-member'));
+        if (isDup && !confirmDuplicate) { setDup(true); return; }
         alert('خطا در ذخیره: ' + (e && e.message ? e.message : e));
         return;
       }
     }
     setSaved(true);
+  };
+
+  const submit = async () => {
+    setTried(true);
+    if (!first.trim() || !last.trim()) {
+      document.querySelector('.formcard').scrollIntoView({ block: 'start' });
+      return;
+    }
+    await doSubmit(false);
   };
 
   const reset = () => {
@@ -259,6 +268,27 @@ function AddMember() {
           </button>
         </div>
       </div>
+
+      {/* duplicate-name confirmation (server refused a same-name member) */}
+      {dup && (
+        <div onClick={() => setDup(false)} style={{ position: 'fixed', inset: 0, background: 'oklch(0.2 0.01 65 / 0.45)', display: 'grid', placeItems: 'center', padding: 20, zIndex: 60 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', padding: '24px 26px', maxWidth: 420, width: '100%', boxShadow: 'var(--shadow)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--warn-soft)', color: 'var(--warn)', display: 'grid', placeItems: 'center', flex: 'none' }}><Icon name="alert" size={20} stroke={1.8} /></div>
+              <h3 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 19, color: 'var(--ink)' }}>عضوی با همین نام وجود دارد</h3>
+            </div>
+            <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.7 }}>
+              عضوی با نام <strong>{first.trim()} {last.trim()}</strong> از قبل ثبت شده است. اگر این <strong>فردِ دیگری</strong> با همین نام است ادامه دهید؛ در غیر این صورت برای جلوگیری از ثبت تکراری لغو کنید.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button onClick={() => setDup(false)} style={{ height: 42, padding: '0 18px', borderRadius: 10, background: 'var(--surface)', color: 'var(--ink-2)', border: '1px solid var(--hair)', cursor: 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600 }}>لغو</button>
+              <button onClick={async () => { setDup(false); await doSubmit(true); }} style={{ height: 42, padding: '0 20px', borderRadius: 10, background: 'var(--warn)', color: 'var(--surface)', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                <Icon name="check" size={16} stroke={2} /> بله، فرد دیگری است
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

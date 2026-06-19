@@ -167,6 +167,12 @@ function MemberCards({ rows, open, setOpen, onClear, noMembers, nextId }) {
                 </div>
                 <Money value={m.seedBalance} unit="تومان" style={{ fontSize: 16, fontWeight: 600, color: 'var(--accent)', flex: 'none' }} />
               </div>
+              {m.loan && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--hair-2)', fontSize: 12.5 }}>
+                  <span style={{ color: 'var(--ink-3)' }}>ماندهٔ وام{loanBehind(m.loan) > 0 && <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · {fmt(loanBehind(m.loan))} قسط عقب</span>}</span>
+                  <Money value={m.loan.outstanding} unit="تومان" style={{ fontSize: 15, fontWeight: 600, color: loanBehind(m.loan) > 0 ? 'var(--warn)' : 'var(--ink-2)' }} />
+                </div>
+              )}
             </div>
             {isOpen && (
               <div style={{ borderTop: '1px solid var(--hair)', background: 'var(--surface-2)', padding: '14px 16px' }}>
@@ -211,13 +217,14 @@ function MembersTable({ fund, isMobile }) {
   const [query, setQuery] = React.useState('');
   const [family, setFamily] = React.useState(ALL_FAM);
   const [behindOnly, setBehindOnly] = React.useState(false);
+  const [loanBehindOnly, setLoanBehindOnly] = React.useState(false);
   const [purchasingOnly, setPurchasingOnly] = React.useState(false);
   const [sortKey, setSortKey] = React.useState('rank');
   const [sortDir, setSortDir] = React.useState('asc');
   const [open, setOpen] = React.useState(null);
   const [page, setPage] = React.useState(0);
   const [viewAll, setViewAll] = React.useState(false);
-  const clearAll = () => { setQuery(''); setFamily(ALL_FAM); setBehindOnly(false); setPurchasingOnly(false); };
+  const clearAll = () => { setQuery(''); setFamily(ALL_FAM); setBehindOnly(false); setLoanBehindOnly(false); setPurchasingOnly(false); };
 
   // --- loan-queue ranking (drag to reorder; persisted via reorderLoanOrder) ---
   const baselineQueue = React.useMemo(() => (fund.loanOrder || []).map((m) => m.id), [fund.loanOrder]);
@@ -233,9 +240,11 @@ function MembersTable({ fund, isMobile }) {
   const orderDirty = queue.length !== savedQueue.length || queue.some((id, i) => id !== savedQueue[i]);
 
   React.useEffect(() => {
-    const h = () => { setBehindOnly(true); setQuery(''); setFamily(ALL_FAM); };
+    const h = () => { setBehindOnly(true); setLoanBehindOnly(false); setQuery(''); setFamily(ALL_FAM); };
+    const hl = () => { setLoanBehindOnly(true); setBehindOnly(false); setQuery(''); setFamily(ALL_FAM); };
     window.addEventListener('focus-behind', h);
-    return () => window.removeEventListener('focus-behind', h);
+    window.addEventListener('focus-loan-behind', hl);
+    return () => { window.removeEventListener('focus-behind', h); window.removeEventListener('focus-loan-behind', hl); };
   }, []);
 
   const onSort = (key) => {
@@ -248,6 +257,7 @@ function MembersTable({ fund, isMobile }) {
   const rows = React.useMemo(() => {
     let r = fund.members.slice();
     if (behindOnly) r = r.filter((m) => m.behind);
+    if (loanBehindOnly) r = r.filter((m) => loanBehind(m.loan) > 0);
     if (purchasingOnly) r = r.filter((m) => m.pendingShare);
     if (family !== ALL_FAM) r = r.filter((m) => m.family === family);
     if (query.trim()) {
@@ -267,7 +277,7 @@ function MembersTable({ fund, isMobile }) {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return r;
-  }, [fund.members, behindOnly, purchasingOnly, family, query, sortKey, sortDir, queue]);
+  }, [fund.members, behindOnly, loanBehindOnly, purchasingOnly, family, query, sortKey, sortDir, queue]);
 
   // drag-reorder the loan queue only in its natural order (rank, unfiltered)
   const dragEnabled = sortKey === 'rank' && !query.trim() && family === ALL_FAM && !behindOnly && !purchasingOnly;
@@ -290,7 +300,7 @@ function MembersTable({ fund, isMobile }) {
   };
 
   // pagination — reset to first page whenever the filtered set changes
-  React.useEffect(() => { setPage(0); }, [query, family, behindOnly, purchasingOnly, sortKey, sortDir]);
+  React.useEffect(() => { setPage(0); }, [query, family, behindOnly, loanBehindOnly, purchasingOnly, sortKey, sortDir]);
   const pageCount = viewAll ? 1 : Math.max(1, Math.ceil(rows.length / PAGE));
   const curPage = Math.min(page, pageCount - 1);
   const pageRows = viewAll ? rows : rows.slice(curPage * PAGE, curPage * PAGE + PAGE);
@@ -336,6 +346,7 @@ function MembersTable({ fund, isMobile }) {
           <Icon name="grip" size={15} /> ترتیب نوبت وام
         </button>
         {behindOnly && chip('عقب‌افتاده در پرداخت', () => setBehindOnly(false))}
+        {loanBehindOnly && chip('اقساط عقب‌افتاده', () => setLoanBehindOnly(false))}
         <div style={{ marginInlineStart: 'auto', fontSize: 13, color: 'var(--ink-3)' }}>
           {fmt(rows.length)} از {fmt(fund.members.length)} عضو
         </div>
@@ -431,7 +442,14 @@ function MembersTable({ fund, isMobile }) {
                         <span className="mono" style={{ fontSize: 12.5, fontWeight: 600, color: m.fundedPct >= 100 ? 'var(--accent)' : 'var(--ink-2)', width: 38, textAlign: 'left', flex: 'none' }}>{faPct(m.fundedPct)}٪</span>
                       </div>
                     </td>
-                    <td style={{ padding: '13px 14px', textAlign: 'right' }}><span className="mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{fmt(m.seedBalance)}</span></td>
+                    <td style={{ padding: '13px 14px', textAlign: 'right' }}>
+                      <span className="mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{fmt(m.seedBalance)}</span>
+                      {m.loan && (
+                        <div style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2, whiteSpace: 'nowrap' }}>
+                          ماندهٔ وام <span className="mono" style={{ color: loanBehind(m.loan) > 0 ? 'var(--warn)' : 'var(--ink-2)', fontWeight: 600 }}>{fmt(m.loan.outstanding)}</span>
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: '13px 14px' }}><StatusPill status={m.status} /></td>
                     <td style={{ padding: '13px 0 13px 12px', textAlign: 'left' }}>
                       <Icon name="chevron" size={16} style={{ color: 'var(--ink-3)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .18s ease' }} />

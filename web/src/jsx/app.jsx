@@ -112,9 +112,11 @@ function App() {
         );
       })()}
 
-      {/* ---- attention alert (only when something needs attention) ---- */}
+      {/* ---- attention alerts (only when something needs attention) ---- */}
       {ready && <AttentionCard fund={fund}
         onAttention={() => { setView('members'); window.dispatchEvent(new Event('focus-behind')); setTimeout(scrollToMembers, 60); }} />}
+      {ready && <LoanAttentionCard fund={fund}
+        onAttention={() => { setView('members'); window.dispatchEvent(new Event('focus-loan-behind')); setTimeout(scrollToMembers, 60); }} />}
 
       {/* ---- at a glance (starting section) ---- */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '0 0 16px' }}>
@@ -128,6 +130,17 @@ function App() {
         ? <StatRow fund={fund} isMobile={isMobile}
             onMembers={() => { setView('members'); setTimeout(scrollToMembers, 60); }} />
         : <StatRowSkeleton isMobile={isMobile} />}
+
+      {/* ---- 3-month budget forecast (expected income: membership + installments) ---- */}
+      {ready && (
+        <React.Fragment>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '32px 0 16px' }}>
+            <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)', lineHeight: 1.3 }}>بودجهٔ سه ماه آینده</h2>
+            <span style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
+          </div>
+          <BudgetChart fund={fund} />
+        </React.Fragment>
+      )}
 
       {/* ---- workhorse: members / families (purchasing is now a filter inside) ---- */}
       <div id="members-section" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, margin: '40px 0 16px', scrollMarginTop: 16, flexWrap: 'wrap' }}>

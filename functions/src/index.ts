@@ -50,6 +50,16 @@ const optNote = (v: unknown): string | null => {
 };
 const strArray = (v: unknown, max = 30): string[] =>
   Array.isArray(v) ? v.map((x) => String(x).slice(0, 120)).filter(Boolean).slice(0, max) : [];
+/** Normalize a full name for duplicate detection: unify ي/ك→ی/ک, ZWNJ→space,
+ *  lowercase, collapse whitespace. Mirrors the client-side norm() in the UI. */
+const normName = (first: string, last: string): string =>
+  `${first} ${last}`
+    .replace(/ي/g, "ی") // ي -> ی
+    .replace(/ك/g, "ک") // ك -> ک
+    .replace(/‌/g, " ") // ZWNJ -> space
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
 const toTs = (v: unknown): Timestamp =>
   typeof v === "number" && Number.isFinite(v) ? Timestamp.fromMillis(v) : Timestamp.now();
 const optTs = (v: unknown): Timestamp | null =>
@@ -196,6 +206,24 @@ export const membersCreate = onCall(async (req) => {
   const shares = Math.max(0, Math.min(50, Math.floor(Number(d.initialShares) || 0)));
   const savings = Math.max(0, Math.floor(Number(d.savings) || 0)); // usually 0; lets an admin set an opening balance
   const status = d.status === "inactive" ? "inactive" : "active";
+
+  // Duplicate-name guard: refuse a member whose first+last name already exists
+  // unless the caller explicitly confirms it's a different person. The UI shows a
+  // confirm box; the MCP bot must ask the user before retrying with confirmDuplicate.
+  if (!d.confirmDuplicate) {
+    const target = normName(firstName, lastName);
+    const existing = await db.collection(COL.members).get();
+    const dup = existing.docs.find(
+      (doc) => normName(String(doc.data().firstName ?? ""), String(doc.data().lastName ?? "")) === target
+    );
+    if (dup) {
+      throw new HttpsError(
+        "already-exists",
+        `عضوی با نام «${firstName} ${lastName}» از قبل ثبت شده است. اگر این فردِ دیگری با همین نام است، برای ادامه تأیید کنید.`,
+        { code: "duplicate-member", existingId: dup.id }
+      );
+    }
+  }
 
   const memberRef = db.collection(COL.members).doc();
   await memberRef.set({

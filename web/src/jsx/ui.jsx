@@ -127,4 +127,20 @@ function useFund() {
   return { fund: window.FUND, ready };
 }
 
-Object.assign(window, { fmt, faPct, faDigits, Money, Icon, StatusPill, useIsMobile, Skel, SkelText, SkelCircle, useFund });
+// How many installments a member is BEHIND on their loan: expected (whole months
+// since the loan was issued, capped at the term) minus installments actually paid.
+// 0 when there's no active loan, no issue date, or they're on/ahead of schedule.
+function loanBehind(loan) {
+  if (!loan || loan.status === 'repaid' || !loan.issuedAt) return 0;
+  const now = new Date();
+  const iss = new Date(loan.issuedAt);
+  const monthsElapsed = (now.getFullYear() - iss.getFullYear()) * 12 + (now.getMonth() - iss.getMonth());
+  const term = loan.termMonths != null ? loan.termMonths : (loan.term || 0);
+  const expected = Math.max(0, Math.min(term, monthsElapsed));
+  const paid = loan.installmentsPaid != null
+    ? loan.installmentsPaid
+    : Math.round((loan.principal - loan.outstanding) / (loan.monthly || 1));
+  return Math.max(0, expected - paid);
+}
+
+Object.assign(window, { fmt, faPct, faDigits, Money, Icon, StatusPill, useIsMobile, Skel, SkelText, SkelCircle, useFund, loanBehind });
