@@ -124,8 +124,10 @@ function AddMember() {
         if (isEdit) { await window.API.updateMember({ id: editM.id, ...payload }); }
         else { await window.API.createMember({ ...payload, initialShares: shares, confirmDuplicate }); }
       } catch (e) {
-        // server refuses a same-name member unless confirmed → show the confirm box
-        const isDup = !isEdit && e && (e.code === 'already-exists' || (e.details && e.details.code === 'duplicate-member'));
+        // server refuses a same-name member unless confirmed → show the confirm box.
+        // Firebase callable codes are namespaced ('functions/already-exists'); strip it.
+        const code = e && e.code ? String(e.code).replace(/^functions\//, '') : '';
+        const isDup = !isEdit && e && (code === 'already-exists' || (e.details && e.details.code === 'duplicate-member'));
         if (isDup && !confirmDuplicate) { setDup(true); return; }
         alert('خطا در ذخیره: ' + (e && e.message ? e.message : e));
         return;

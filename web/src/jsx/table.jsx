@@ -280,7 +280,7 @@ function MembersTable({ fund, isMobile }) {
   }, [fund.members, behindOnly, loanBehindOnly, purchasingOnly, family, query, sortKey, sortDir, queue]);
 
   // drag-reorder the loan queue only in its natural order (rank, unfiltered)
-  const dragEnabled = sortKey === 'rank' && !query.trim() && family === ALL_FAM && !behindOnly && !purchasingOnly;
+  const dragEnabled = sortKey === 'rank' && !query.trim() && family === ALL_FAM && !behindOnly && !loanBehindOnly && !purchasingOnly;
   const onRowDrop = (targetId) => {
     if (dragId && targetId && dragId !== targetId) {
       setQueue((q) => {

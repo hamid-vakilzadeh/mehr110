@@ -98,7 +98,9 @@ function nextMonthLabels(n) {
   const fmtM = new Intl.DateTimeFormat('fa-IR', { calendar: 'persian', month: 'long' });
   const base = new Date();
   const out = [];
-  for (let k = 1; k <= n; k++) out.push(fmtM.format(new Date(base.getFullYear(), base.getMonth() + k, 1)));
+  // day 16 (not 1) so the Gregorian date always lands inside the intended Jalali
+  // month — Jalali months start ~9–11 days into a Gregorian month.
+  for (let k = 1; k <= n; k++) out.push(fmtM.format(new Date(base.getFullYear(), base.getMonth() + k, 16)));
   return out;
 }
 

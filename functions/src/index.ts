@@ -50,13 +50,17 @@ const optNote = (v: unknown): string | null => {
 };
 const strArray = (v: unknown, max = 30): string[] =>
   Array.isArray(v) ? v.map((x) => String(x).slice(0, 120)).filter(Boolean).slice(0, max) : [];
-/** Normalize a full name for duplicate detection: unify ي/ك→ی/ک, ZWNJ→space,
- *  lowercase, collapse whitespace. Mirrors the client-side norm() in the UI. */
+/** Normalize a full name for duplicate detection: Persian/Arabic-Indic digits→ASCII,
+ *  unify ي/ك→ی/ک, strip ZWNJ + harakat, lowercase, collapse whitespace. Kept in sync
+ *  with the MCP find_member norm() in mehr110-mcp/src/tools/read.ts. */
 const normName = (first: string, last: string): string =>
   `${first} ${last}`
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0)) // Persian digits → ASCII
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660)) // Arabic-Indic digits → ASCII
     .replace(/ي/g, "ی") // ي -> ی
     .replace(/ك/g, "ک") // ك -> ک
     .replace(/‌/g, " ") // ZWNJ -> space
+    .replace(/[ً-ْ]/g, "") // harakat/diacritics
     .toLowerCase()
     .trim()
     .replace(/\s+/g, " ");
