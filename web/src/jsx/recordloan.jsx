@@ -97,13 +97,17 @@ function RecordLoan() {
   const monthly = P > 0 ? Math.round(P / term_) : 0;
   const outstanding = Math.max(0, P - paid_ * monthly);
   const pct = P > 0 ? Math.min(100, Math.round(((P - outstanding) / P) * 100)) : 0;
+  // a NEW loan requires the member to be loan-eligible (≥1 share funded to par);
+  // the «pre-existing» toggle records historical loans and is exempt.
+  const notEligible = !isExisting && !member.loanEligible;
   const overCap = !isExisting && P > (member.maxLoan || 0); // new loan can't exceed eligibility
   const futureDate = (yr > today.y) || (yr === today.y && mo > today.m) || (yr === today.y && mo === today.m && d > today.d);
-  const blocked = !P || overCap || futureDate;
+  const blocked = !P || notEligible || overCap || futureDate;
 
   const submit = async () => {
     setErr('');
     if (!P) { setErr('مبلغ (اصل) وام را وارد کنید.'); return; }
+    if (notEligible) { setErr('این عضو واجد شرایط وام نیست؛ ابتدا باید دست‌کم یک سهم تا حداقل پس‌انداز تأمین شود (یا «ثبت وام از پیش‌موجود» را روشن کنید).'); return; }
     if (overCap) { setErr(`سقف وام این عضو ${fmt(member.maxLoan)} تومان است.`); return; }
     if (futureDate) { setErr('تاریخ نمی‌تواند بعد از امروز باشد.'); return; }
     if (window.API && window.API.live) {
@@ -254,6 +258,12 @@ function RecordLoan() {
           <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>{faPct(pct)}٪ بازپرداخت‌شده</span>
         </div>
 
+        {notEligible && (
+          <div style={{ fontSize: 12.5, color: 'var(--warn)', display: 'flex', alignItems: 'flex-start', gap: 6, lineHeight: 1.7 }}>
+            <Icon name="alert" size={14} stroke={1.8} style={{ flex: 'none', marginTop: 2 }} />
+            <span>این عضو واجد شرایط وام نیست؛ ابتدا باید دست‌کم یک سهم تا حداقل پس‌انداز تأمین شود. برای ثبت وامِ پیش از برنامه، «ثبت وام از پیش‌موجود» را روشن کنید.</span>
+          </div>
+        )}
         {err && (
           <div style={{ fontSize: 12.5, color: 'var(--warn)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Icon name="alert" size={14} stroke={1.8} /> {err}
