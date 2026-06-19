@@ -7,7 +7,7 @@ const COLS = [
   { key: 'nShares',       label: 'سهم‌ها',     w: '78px' },
   { key: 'fundedPct',     label: 'تأمین سهم',  w: '128px' },
   { key: 'loanRemaining', label: 'ماندهٔ وام', w: '128px' },
-  { key: 'status',        label: 'وضعیت',      w: '100px' },
+  { key: 'status',        label: 'وضعیت',      w: '210px' },
 ];
 
 /* remaining % of a member's loan principal still owed (0 if no loan) */
@@ -150,7 +150,7 @@ function MemberCards({ rows, open, setOpen, onClear, noMembers, nextId }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {m.behind && <Icon name="alert" size={15} stroke={1.7} style={{ color: 'var(--warn)' }} />}
                 <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', flex: 1 }}>{m.name}</span>
-                {m.loanEligible && <span title="واجد شرایط وام (سهم تأمین‌شده)" style={{ display: 'inline-flex', color: 'var(--accent)' }}><Icon name="piggyBank" size={15} stroke={1.8} /></span>}
+                <span title={m.loanEligible ? 'واجد شرایط وام (سهم تأمین‌شده)' : 'سهم تأمین‌نشده'} style={{ display: 'inline-flex', flex: 'none', color: m.loanEligible ? 'var(--accent)' : 'var(--warn)' }}><Icon name="piggyBank" size={15} stroke={1.8} /></span>
                 <Icon name="banknote" size={15} title={m.loan ? 'وام فعال دارد' : 'بدون وام'} style={{ color: m.loan ? 'var(--accent)' : 'var(--ink-3)' }} />
                 {m.pendingShare && <Icon name="arrowUpRight" size={14} style={{ color: 'var(--accent)' }} />}
                 <Icon name="chevron" size={15} style={{ color: 'var(--ink-3)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .18s ease' }} />
@@ -213,7 +213,7 @@ function LoanStatus({ m, isNext }) {
           <Icon name="check" size={11} stroke={2} /> دریافت کرده
         </span>
       ) : (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500, color: 'var(--ink-3)' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 99, color: 'var(--ink-3)', background: 'var(--surface-2)', border: '1px solid var(--hair)' }}>
           <Icon name="clock" size={11} stroke={1.8} /> در انتظار
         </span>
       )}
@@ -391,7 +391,7 @@ function MembersTable({ fund, isMobile }) {
       <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
           <colgroup>
-            <col /><col style={{ width: '120px' }} /><col style={{ width: '78px' }} /><col style={{ width: '128px' }} /><col style={{ width: '120px' }} /><col style={{ width: '110px' }} /><col style={{ width: '40px' }} />
+            <col /><col style={{ width: '120px' }} /><col style={{ width: '78px' }} /><col style={{ width: '128px' }} /><col style={{ width: '120px' }} /><col style={{ width: '210px' }} /><col style={{ width: '40px' }} />
           </colgroup>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--hair)', background: 'var(--surface-2)' }}>
@@ -446,9 +446,6 @@ function MembersTable({ fund, isMobile }) {
                           : <span style={{ width: 15, flex: 'none' }} />}
                         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', flexShrink: 0 }}>{m.name}</span>
                         {m.behind && <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--warn)', whiteSpace: 'nowrap' }}>· {fmt(m.missed)} قسط عقب</span>}
-                        <span title={m.loan ? 'وام فعال دارد' : 'بدون وام'} style={{ display: 'inline-flex', color: m.loan ? 'var(--accent)' : 'var(--ink-3)' }}><Icon name="banknote" size={13} /></span>
-                        {m.pendingShare && <span title="سهم تأمین‌نشده" style={{ display: 'inline-flex', color: 'var(--accent)' }}><Icon name="arrowUpRight" size={13} /></span>}
-                        <LoanStatus m={m} isNext={m.id === nextId} />
                       </div>
                     </td>
                     <td style={{ padding: '13px 14px', fontSize: 13.5, color: 'var(--ink-2)' }}>{m.family}</td>
@@ -473,7 +470,16 @@ function MembersTable({ fund, isMobile }) {
                         <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>—</span>
                       )}
                     </td>
-                    <td style={{ padding: '13px 14px' }}><StatusPill status={m.status} /></td>
+                    <td style={{ padding: '13px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', rowGap: 6 }}>
+                        <span title={m.loanEligible ? 'واجد شرایط وام (سهم تأمین‌شده)' : 'سهم تأمین‌نشده'} style={{ display: 'inline-flex', flex: 'none', color: m.loanEligible ? 'var(--accent)' : 'var(--warn)' }}><Icon name="piggyBank" size={15} stroke={1.8} /></span>
+                        <span title={m.loan ? 'وام فعال دارد' : 'بدون وام'} style={{ display: 'inline-flex', flex: 'none', color: m.loan ? 'var(--accent)' : 'var(--ink-3)' }}><Icon name="banknote" size={14} /></span>
+                        {m.pendingShare && <span title="در حال تأمین سهم" style={{ display: 'inline-flex', flex: 'none', color: 'var(--accent)' }}><Icon name="arrowUpRight" size={13} /></span>}
+                        {m.status === 'active'
+                          ? <LoanStatus m={m} isNext={m.id === nextId} />
+                          : <StatusPill status={m.status} />}
+                      </div>
+                    </td>
                     <td style={{ padding: '13px 0 13px 12px', textAlign: 'left' }}>
                       <Icon name="chevron" size={16} style={{ color: 'var(--ink-3)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .18s ease' }} />
                     </td>

@@ -41,7 +41,7 @@ function FamilyView({ fund, isMobile }) {
                     <a key={m.id} href={`statement.html?m=${m.id}`} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 0', borderBottom: '1px solid var(--hair-2)', textDecoration: 'none', color: 'inherit' }}>
                       {m.behind ? <Icon name="alert" size={13} stroke={1.7} style={{ color: 'var(--warn)' }} /> : <span style={{ width: 13, flex: 'none' }} />}
                       <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
-                      {m.loanEligible && <Icon name="piggyBank" size={14} stroke={1.8} style={{ color: 'var(--accent)' }} />}
+                      <span title={m.loanEligible ? 'واجد شرایط وام' : 'سهم تأمین‌نشده'} style={{ display: 'inline-flex', flex: 'none', color: m.loanEligible ? 'var(--accent)' : 'var(--warn)' }}><Icon name="piggyBank" size={14} stroke={1.8} /></span>
                       <span title={m.loan ? 'وام فعال دارد' : 'بدون وام'} style={{ display: 'inline-flex', flex: 'none', color: m.loan ? 'var(--accent)' : 'var(--ink-3)' }}><Icon name="banknote" size={13} /></span>
                       <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-2)', width: 70, textAlign: 'left' }}>{fmt(m.seedBalance)}</span>
                     </a>
@@ -114,7 +114,7 @@ function FamilyView({ fund, isMobile }) {
                             ? <Icon name="alert" size={14} stroke={1.7} style={{ color: 'var(--warn)' }} />
                             : <span style={{ width: 14, flex: 'none' }} />}
                           <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
-                          {m.loanEligible && <span title="واجد شرایط وام" style={{ display: 'inline-flex', color: 'var(--accent)' }}><Icon name="piggyBank" size={14} stroke={1.8} /></span>}
+                          <span title={m.loanEligible ? 'واجد شرایط وام' : 'سهم تأمین‌نشده'} style={{ display: 'inline-flex', flex: 'none', color: m.loanEligible ? 'var(--accent)' : 'var(--warn)' }}><Icon name="piggyBank" size={14} stroke={1.8} /></span>
                           <span title={m.loan ? 'وام فعال دارد' : 'بدون وام'} style={{ display: 'inline-flex', color: m.loan ? 'var(--accent)' : 'var(--ink-3)' }}><Icon name="banknote" size={12} /></span>
                           <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', width: 44, textAlign: 'left' }}>{faPct(m.fundedPct)}٪</span>
                           <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-2)', width: 70, textAlign: 'left' }}>{fmt(m.seedBalance)}</span>
