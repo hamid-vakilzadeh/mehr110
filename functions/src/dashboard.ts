@@ -45,6 +45,7 @@ export async function buildDashboard() {
   // ---- fund aggregates ----
   const totalPool = members.reduce((t, m) => t + m.savings, 0);
   const outstanding = members.reduce((t, m) => t + (m.loan ? m.loan.outstanding : 0), 0);
+  const loanedOut = members.reduce((t, m) => t + (m.loan ? m.loan.principal : 0), 0);
   const available = totalPool - outstanding;
   const activeLoans = members.filter((m) => m.loan).length;
   const needsAttention = members.filter((m) => m.behind).length;
@@ -120,7 +121,6 @@ export async function buildDashboard() {
     },
     loanOrderIds: orderIds,
     loanNextId,
-    loanRound: rotation.round,
     loanReceivedCount,
     loanTotal: orderIds.length,
     queueIds,
@@ -129,6 +129,7 @@ export async function buildDashboard() {
       totalPool,
       available,
       outstanding,
+      loanedOut,
       activeLoans,
       memberCount: members.length,
       familiesCount: famNames.length,

@@ -19,15 +19,17 @@ function Panel({ title, children, style = {} }) {
 
 /* ---------- ترکیب سرمایه — نمودار حلقه‌ای (دونات) ---------- */
 function Composition({ fund }) {
-  const { available, outstanding, totalPool } = fund.kpis;
+  const { available, totalPool } = fund.kpis;
   const isMobile = useIsMobile();
   const availPct = totalPool > 0 ? Math.round((available / totalPool) * 100) : 0;
+  const under = availPct < 0; // fund over-lent: loans exceed the pool (underfunded)
+  const ringColor = under ? 'var(--warn)' : 'var(--accent)';
   const SIZE = isMobile ? 168 : 188;
   const R = isMobile ? 64 : 72;
   const SW = isMobile ? 18 : 20;
   const cx = SIZE / 2;
   const C = 2 * Math.PI * R;
-  const dash = (availPct / 100) * C;
+  const dash = (Math.max(0, availPct) / 100) * C;
   const cap = availPct > 0 && availPct < 100 ? 'round' : 'butt';
 
   const legendItem = (label, value, color, swatch) => (
@@ -44,21 +46,21 @@ function Composition({ fund }) {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '8px 0 4px' }}>
         <div style={{ position: 'relative', width: SIZE, height: SIZE }}>
           <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-            <circle cx={cx} cy={cx} r={R} fill="none" stroke="var(--fill-2)" strokeWidth={SW} />
-            <circle cx={cx} cy={cx} r={R} fill="none" stroke="var(--accent)" strokeWidth={SW} strokeLinecap={cap}
+            <circle cx={cx} cy={cx} r={R} fill="none" stroke={under ? 'var(--warn-soft)' : 'var(--fill-2)'} strokeWidth={SW} />
+            <circle cx={cx} cy={cx} r={R} fill="none" stroke={ringColor} strokeWidth={SW} strokeLinecap={cap}
               strokeDasharray={`${dash} ${C - dash}`} transform={`rotate(-90 ${cx} ${cx})`} />
           </svg>
           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
             <div style={{ textAlign: 'center' }}>
-              <div className="mono" style={{ fontSize: isMobile ? 32 : 38, fontWeight: 700, color: 'var(--accent)', lineHeight: 1 }}>{faPct(availPct)}٪</div>
-              <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 5 }}>قابل وام‌دهی</div>
+              <div className="mono" style={{ fontSize: isMobile ? 32 : 38, fontWeight: 700, color: ringColor, lineHeight: 1 }}>{faPct(availPct)}٪</div>
+              <div style={{ fontSize: 12, color: under ? 'var(--warn)' : 'var(--ink-3)', marginTop: 5 }}>{under ? 'کسری صندوق' : 'قابل وام‌دهی'}</div>
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'stretch', justifyContent: 'center', gap: 0, width: '100%', maxWidth: 360 }}>
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>{legendItem('قابل وام‌دهی', available, 'var(--accent)', { background: 'var(--accent)' })}</div>
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>{legendItem('قابل وام‌دهی', available, ringColor, { background: ringColor })}</div>
           <span style={{ width: 1, background: 'var(--hair)', margin: '2px 4px' }} />
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>{legendItem('وام داده‌شده', outstanding, 'var(--ink-2)', { background: 'var(--fill-2)', border: '1px solid var(--hair)' })}</div>
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>{legendItem('کل سرمایه', totalPool, 'var(--ink-2)', { background: 'var(--fill-2)', border: '1px solid var(--hair)' })}</div>
         </div>
       </div>
     </Panel>

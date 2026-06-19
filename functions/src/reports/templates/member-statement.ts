@@ -13,11 +13,26 @@ type Dash = Awaited<ReturnType<typeof buildDashboard>>;
 type DashMember = Dash["members"][number];
 type Receipt = DashMember["seedReceipts"][number];
 
+// Loan-severity color — mirrors web/src/jsx/ui.jsx loanRemColor so the loan bar
+// reads identically on screen and in the (Chromium-rendered) PDF. Maps a loan's
+// remaining-balance % to a green→amber→terracotta oklch color: small remaining =
+// calm, large remaining = alarming.
+function loanRemColor(remPct: number): string {
+  const p = Math.max(0, Math.min(100, remPct)) / 100;
+  const stops: [number, number, number][] = [[0.52, 0.10, 158], [0.62, 0.13, 70], [0.55, 0.155, 35]];
+  const a = p <= 0.5 ? stops[0] : stops[1];
+  const b = p <= 0.5 ? stops[1] : stops[2];
+  const t = p <= 0.5 ? p / 0.5 : (p - 0.5) / 0.5;
+  const L = a[0] + (b[0] - a[0]) * t;
+  const C = a[1] + (b[1] - a[1]) * t;
+  const H = a[2] + (b[2] - a[2]) * t;
+  return `oklch(${L.toFixed(3)} ${C.toFixed(3)} ${H.toFixed(1)})`;
+}
+
 export interface MemberStatementData {
   member: DashMember;
   parValue: number;
   asOfMs: number;
-  loanRound: number;
   queuePos: number; // 1-based position in the loan queue; 0 if not queued
 }
 
@@ -34,7 +49,6 @@ async function gather(q: URLSearchParams): Promise<MemberStatementData> {
     member,
     parValue: dash.settings.parValue,
     asOfMs: dash.meta.asOf,
-    loanRound: dash.loanRound,
     queuePos: dash.queueIds.indexOf(member.id) + 1,
   };
 }
@@ -101,6 +115,8 @@ function loanPanel(m: DashMember): string {
   if (!loan || loan.status !== "active") return "";
   const monthly = loan.monthly || 0;
   const paid = Math.round((loan.principal - loan.outstanding) / (monthly || 1));
+  const remPct = loan.principal > 0 ? Math.round((loan.outstanding / loan.principal) * 100) : 0;
+  const remColor = loanRemColor(remPct);
   const meta: string[] = [`تاریخ پرداخت وام: <b>${jFullDate(loan.issuedAt)}</b>`];
   if (loan.bankTxnId) meta.push(`کد بانکی: <b class="num">${esc(loan.bankTxnId)}</b>`);
   if (loan.note) meta.push(`یادداشت: <b>${esc(loan.note)}</b>`);
@@ -109,12 +125,12 @@ function loanPanel(m: DashMember): string {
       <div class="tile-row" style="background:none;border:none">
         ${tile("اصل وام", `<span class="num">${money(loan.principal)}</span>`, "money")}
         ${tile("قسط ماهانه", `<span class="num">${money(monthly)}</span>`)}
-        ${tile("ماندهٔ بدهی", `<span class="num">${money(loan.outstanding)}</span>`, "money")}
+        ${tile("ماندهٔ بدهی", `<span class="num" style="color:${remColor}">${money(loan.outstanding)}</span>`)}
       </div>
-      <div style="margin-top:11px"><div class="bar"><i style="width:${Math.min(100, Math.max(0, loan.pct))}%"></i></div>
+      <div style="margin-top:11px"><div class="bar"><i style="width:${Math.min(100, Math.max(0, loan.pct))}%;background:${remColor}"></i></div>
         <div style="display:flex;justify-content:space-between;font-size:8.5pt;color:${TOKENS.ink3};margin-top:6px">
           <span><span class="num">${faDigits(paid)}</span> از <span class="num">${faDigits(loan.termMonths)}</span> قسط پرداخت‌شده</span>
-          <span style="font-weight:700;color:${TOKENS.accent}">${pctFa(loan.pct)} بازپرداخت</span>
+          <span style="font-weight:700;color:${remColor}">${pctFa(loan.pct)} بازپرداخت</span>
         </div>
       </div>
       <div class="kv" style="margin-top:9px;border-top:1px solid ${TOKENS.hair2};padding-top:8px">${meta.join(" &nbsp;·&nbsp; ")}</div>
@@ -175,8 +191,8 @@ function ledger(m: DashMember): string {
 function footerBlock(d: MemberStatementData): string {
   const m = d.member;
   let queue: string;
-  if (m.loanReceived) queue = `در دور <b class="num">${faDigits(d.loanRound)}</b> وام دریافت شده است.`;
-  else if (d.queuePos > 0) queue = `نفر <b class="num">${faDigits(d.queuePos)}</b> در صف وام (دور <span class="num">${faDigits(d.loanRound)}</span>).`;
+  if (m.loanReceived) queue = `در این دوره وام دریافت شده است.`;
+  else if (d.queuePos > 0) queue = `نفر <b class="num">${faDigits(d.queuePos)}</b> در صف وام.`;
   else queue = "—";
 
   const contact: string[] = [];

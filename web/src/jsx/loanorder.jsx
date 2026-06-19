@@ -8,7 +8,6 @@ function LoanOrder() {
   const [order, setOrder] = React.useState(() => fund.loanOrder.map((m) => ({
     id: m.id, name: m.name, family: m.family, received: m.loanReceived,
   })));
-  const [round, setRound] = React.useState(fund.loanRound);
   const [dragId, setDragId] = React.useState(null);
   const [overId, setOverId] = React.useState(null);
   const [saved, setSaved] = React.useState(false);
@@ -53,7 +52,6 @@ function LoanOrder() {
   const doStartNewRound = () => {
     if (window.API && window.API.live) window.API.startNewRound().catch((e) => console.error(e));
     setOrder((arr) => arr.map((m) => ({ ...m, received: false })));
-    setRound((r) => r + 1);
     setSaved(false);
     setConfirmRound(false);
   };
@@ -76,15 +74,11 @@ function LoanOrder() {
         </div>
       </div>
 
-      {/* round progress */}
+      {/* rotation progress (no round counter — just how many have received) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', padding: '14px 18px', marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>دور</span>
-          <span className="mono" style={{ fontSize: 20, fontWeight: 700, color: 'var(--accent)' }}>{faDigits(round)}</span>
-        </div>
         <div style={{ flex: 1, minWidth: 160 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-2)', marginBottom: 6 }}>
-            <span>{fmt(receivedCount)} از {fmt(total)} عضو در این دور وام گرفته‌اند</span>
+            <span>{fmt(receivedCount)} از {fmt(total)} عضو در این دوره وام گرفته‌اند</span>
             <span className="mono" style={{ fontWeight: 600, color: 'var(--accent)' }}>{faPct(total ? Math.round((receivedCount / total) * 100) : 0)}٪</span>
           </div>
           <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
@@ -185,7 +179,7 @@ function LoanOrder() {
               <h3 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 19, color: 'var(--ink)' }}>شروع دور جدید؟</h3>
             </div>
             <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.8 }}>
-              با شروع دور جدید، وضعیت «دریافت‌کرده» همهٔ اعضا صفر می‌شود و شماره دور به {faDigits(round + 1)} می‌رسد. ترتیب اعضا حفظ می‌شود. این کار قابل بازگشت نیست.
+              با شروع دور جدید، وضعیت «دریافت‌کرده» همهٔ اعضا صفر می‌شود تا دورهٔ تازهٔ وام‌دهی آغاز شود. ترتیب اعضا حفظ می‌شود. این کار قابل بازگشت نیست.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button onClick={() => setConfirmRound(false)} style={{ height: 42, padding: '0 18px', borderRadius: 10, background: 'var(--surface)', color: 'var(--ink-2)', border: '1px solid var(--hair)', cursor: 'pointer', font: 'inherit', fontSize: 14, fontWeight: 600 }}>انصراف</button>

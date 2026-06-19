@@ -37,7 +37,7 @@ function MTile({ label, children, sub, warn }) {
 
 function MobileOverview() {
   const fund = window.FUND, k = fund.kpis;
-  const availPct = (k.available / k.totalPool) * 100;
+  const availPct = k.totalPool > 0 ? (k.available / k.totalPool) * 100 : 0;
   const next = fund.queue[0];
   return (
     <div className="scroll-y" style={{ height: '100%', overflowY: 'auto', background: 'var(--paper)', paddingTop: SAFE_TOP, paddingBottom: SAFE_BOT }}>
@@ -61,7 +61,7 @@ function MobileOverview() {
         {/* out on loan + members + shares */}
         <div style={{ display: 'flex', gap: 11 }}>
           <MTile label="وام‌های جاری" sub={`${fmt(k.activeLoans)} وام`}>
-            <Money value={k.outstanding} style={{ fontSize: 19, fontWeight: 600, color: 'var(--ink)' }} />
+            <Money value={k.loanedOut} style={{ fontSize: 19, fontWeight: 600, color: 'var(--ink)' }} />
           </MTile>
           <MTile label="اعضا" sub={`${fmt(k.familiesCount)} خانواده`}>
             <span className="mono" style={{ fontSize: 19, fontWeight: 600, color: 'var(--ink)' }}>{fmt(k.memberCount)}</span>

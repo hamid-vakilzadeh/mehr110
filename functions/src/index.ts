@@ -256,7 +256,7 @@ export const membersCreate = onCall(async (req) => {
       const snap = await tx.get(rotRef);
       const order: string[] = snap.data()?.order ?? [];
       order.push(memberRef.id);
-      tx.set(rotRef, { order, round: snap.data()?.round ?? 1 }, { merge: true });
+      tx.set(rotRef, { order }, { merge: true });
       tx.update(memberRef, { loanPos: order.length });
     });
   }
@@ -781,7 +781,7 @@ export const loanOrderGet = onCall(async (req) => {
   const byId = new Map(members.map((m) => [m.id, m]));
   const receivedMap: Record<string, boolean> = {};
   rot.order.forEach((id) => (receivedMap[id] = !!byId.get(id)?.loanReceived));
-  return { round: rot.round, order: rot.order, receivedMap };
+  return { order: rot.order, receivedMap };
 });
 
 export const loanOrderReorder = onCall(async (req) => {
@@ -816,10 +816,9 @@ export const loanOrderStartNewRound = onCall(async (req) => {
   const members = await db.collection(COL.members).get();
   const batch = db.batch();
   members.docs.forEach((d) => batch.update(d.ref, { loanReceived: false }));
-  const round = (await getRotation()).round + 1;
-  batch.set(rotRef, { round, ...rec(req) }, { merge: true });
+  batch.set(rotRef, { ...rec(req) }, { merge: true }); // audit only — round counter removed
   await batch.commit();
-  return { ok: true, round };
+  return { ok: true };
 });
 
 // ============================================================

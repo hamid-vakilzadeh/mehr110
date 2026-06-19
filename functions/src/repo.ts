@@ -59,7 +59,7 @@ export async function getConfig(): Promise<ConfigDoc> {
 
 export async function getRotation(): Promise<LoanRotationDoc> {
   const snap = await db.collection(COL.fund).doc(FUND_DOC.loanRotation).get();
-  if (!snap.exists) return { round: 1, order: [] };
+  if (!snap.exists) return { order: [] };
   return snap.data() as LoanRotationDoc;
 }
 

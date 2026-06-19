@@ -3,11 +3,12 @@
 
 const COLS = [
   { key: 'name',          label: 'عضو',       w: '' },
-  { key: 'family',        label: 'خانواده',     w: '120px' },
-  { key: 'nShares',       label: 'سهم‌ها',     w: '78px' },
-  { key: 'fundedPct',     label: 'تأمین سهم',  w: '128px' },
-  { key: 'loanRemaining', label: 'ماندهٔ وام', w: '128px' },
-  { key: 'status',        label: 'وضعیت',      w: '210px' },
+  { key: 'rank',          label: 'نوبت',      w: '62px' },
+  { key: 'family',        label: 'خانواده',     w: '116px' },
+  { key: 'nShares',       label: 'سهم‌ها',     w: '74px' },
+  { key: 'fundedPct',     label: 'تأمین سهم',  w: '124px' },
+  { key: 'loanRemaining', label: 'ماندهٔ وام', w: '120px' },
+  { key: 'status',        label: 'وضعیت',      w: '186px' },
 ];
 
 /* remaining % of a member's loan principal still owed (0 if no loan) */
@@ -93,16 +94,16 @@ function ShareDetail({ m }) {
             {[['اصل وام', m.loan.principal, false], ['قسط ماهانه', m.loan.monthly, false], ['مانده', m.loan.outstanding, true]].map(([l, v, hl]) => (
               <div key={l}>
                 <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{l}</div>
-                <div className="mono" style={{ fontSize: 15, fontWeight: 600, color: hl ? 'var(--ink)' : 'var(--ink-2)', marginTop: 2 }}>{fmt(v)}</div>
+                <div className="mono" style={{ fontSize: 15, fontWeight: 600, color: hl ? loanRemColor(remPctOf(m)) : 'var(--ink-2)', marginTop: 2 }}>{fmt(v)}</div>
               </div>
             ))}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-2)', marginBottom: 6, whiteSpace: 'nowrap', gap: 10 }}>
             <span>{fmt(m.loan.installmentsPaid)} از {fmt(m.loan.term)} قسط پرداخت شده</span>
-            <span className="mono" style={{ fontWeight: 600, color: 'var(--accent)' }}>{faPct(m.loan.pct)}٪ بازپرداخت</span>
+            <span className="mono" style={{ fontWeight: 600, color: loanRemColor(remPctOf(m)) }}>{faPct(m.loan.pct)}٪ بازپرداخت</span>
           </div>
           <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{ width: `${m.loan.pct}%`, height: '100%', background: 'var(--accent)', borderRadius: 99 }} />
+            <div style={{ width: `${m.loan.pct}%`, height: '100%', background: loanRemColor(remPctOf(m)), borderRadius: 99 }} />
           </div>
         </div>
       )}
@@ -152,7 +153,6 @@ function MemberCards({ rows, open, setOpen, onClear, noMembers, nextId }) {
                 <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', flex: 1 }}>{m.name}</span>
                 <span title={m.loanEligible ? 'واجد شرایط وام (سهم تأمین‌شده)' : 'سهم تأمین‌نشده'} style={{ display: 'inline-flex', flex: 'none', color: m.loanEligible ? 'var(--accent)' : 'var(--warn)' }}><Icon name="piggyBank" size={15} stroke={1.8} /></span>
                 <Icon name="banknote" size={15} title={m.loan ? 'وام فعال دارد' : 'بدون وام'} style={{ color: m.loan ? 'var(--accent)' : 'var(--ink-3)' }} />
-                {m.pendingShare && <Icon name="arrowUpRight" size={14} style={{ color: 'var(--accent)' }} />}
                 <Icon name="chevron" size={15} style={{ color: 'var(--ink-3)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .18s ease' }} />
               </div>
               <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -174,10 +174,10 @@ function MemberCards({ rows, open, setOpen, onClear, noMembers, nextId }) {
                 <div style={{ marginTop: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ink-3)', marginBottom: 5 }}>
                     <span>ماندهٔ وام{loanBehind(m.loan) > 0 && <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · {fmt(loanBehind(m.loan))} قسط عقب</span>}</span>
-                    <span className="mono" style={{ fontWeight: 600, color: 'var(--warn)' }}>{faPct(remPctOf(m))}٪</span>
+                    <span className="mono" style={{ fontWeight: 600, color: loanRemColor(remPctOf(m)) }}>{faPct(remPctOf(m))}٪</span>
                   </div>
                   <div style={{ height: 7, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
-                    <div style={{ width: `${remPctOf(m)}%`, height: '100%', background: 'var(--warn)', borderRadius: 99 }} />
+                    <div style={{ width: `${remPctOf(m)}%`, height: '100%', background: loanRemColor(remPctOf(m)), borderRadius: 99 }} />
                   </div>
                 </div>
               )}
@@ -391,7 +391,7 @@ function MembersTable({ fund, isMobile }) {
       <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
           <colgroup>
-            <col /><col style={{ width: '120px' }} /><col style={{ width: '78px' }} /><col style={{ width: '128px' }} /><col style={{ width: '120px' }} /><col style={{ width: '210px' }} /><col style={{ width: '40px' }} />
+            <col /><col style={{ width: '62px' }} /><col style={{ width: '116px' }} /><col style={{ width: '74px' }} /><col style={{ width: '124px' }} /><col style={{ width: '120px' }} /><col style={{ width: '186px' }} /><col style={{ width: '40px' }} />
           </colgroup>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--hair)', background: 'var(--surface-2)' }}>
@@ -402,7 +402,7 @@ function MembersTable({ fund, isMobile }) {
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ padding: '56px 20px', textAlign: 'center' }}>
+                <td colSpan={8} style={{ padding: '56px 20px', textAlign: 'center' }}>
                   <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--ink-3)' }}>
                     <Icon name={fund.members.length === 0 ? 'users' : 'search'} size={26} stroke={1.4} />
                     <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink-2)' }}>{fund.members.length === 0 ? 'هنوز عضوی اضافه نشده است' : 'عضوی با جستجوی شما مطابقت ندارد'}</div>
@@ -448,6 +448,11 @@ function MembersTable({ fund, isMobile }) {
                         {m.behind && <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--warn)', whiteSpace: 'nowrap' }}>· {fmt(m.missed)} قسط عقب</span>}
                       </div>
                     </td>
+                    <td style={{ padding: '13px 14px', textAlign: 'center' }}>
+                      {rankOf(m.id) === 1e9
+                        ? <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>—</span>
+                        : <span className="mono" style={{ fontSize: 13.5, fontWeight: 700, color: m.id === nextId ? 'var(--accent)' : 'var(--ink-2)' }}>{faDigits(rankOf(m.id) + 1)}</span>}
+                    </td>
                     <td style={{ padding: '13px 14px', fontSize: 13.5, color: 'var(--ink-2)' }}>{m.family}</td>
                     <td style={{ padding: '13px 14px', textAlign: 'right' }} className="mono"><span style={{ fontSize: 13.5, color: 'var(--ink-2)' }}>{fmt(m.nShares)}</span></td>
                     <td style={{ padding: '13px 14px' }}>
@@ -462,9 +467,9 @@ function MembersTable({ fund, isMobile }) {
                       {m.loan ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} title={`ماندهٔ وام: ${fmt(m.loan.outstanding)} تومان`}>
                           <div style={{ flex: 1, height: 6, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden', minWidth: 30 }}>
-                            <div style={{ width: `${remPctOf(m)}%`, height: '100%', background: 'var(--warn)', borderRadius: 99 }} />
+                            <div style={{ width: `${remPctOf(m)}%`, height: '100%', background: loanRemColor(remPctOf(m)), borderRadius: 99 }} />
                           </div>
-                          <span className="mono" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warn)', width: 38, textAlign: 'left', flex: 'none' }}>{faPct(remPctOf(m))}٪</span>
+                          <span className="mono" style={{ fontSize: 12.5, fontWeight: 600, color: loanRemColor(remPctOf(m)), width: 38, textAlign: 'left', flex: 'none' }}>{faPct(remPctOf(m))}٪</span>
                         </div>
                       ) : (
                         <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>—</span>
@@ -474,7 +479,6 @@ function MembersTable({ fund, isMobile }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', rowGap: 6 }}>
                         <span title={m.loanEligible ? 'واجد شرایط وام (سهم تأمین‌شده)' : 'سهم تأمین‌نشده'} style={{ display: 'inline-flex', flex: 'none', color: m.loanEligible ? 'var(--accent)' : 'var(--warn)' }}><Icon name="piggyBank" size={15} stroke={1.8} /></span>
                         <span title={m.loan ? 'وام فعال دارد' : 'بدون وام'} style={{ display: 'inline-flex', flex: 'none', color: m.loan ? 'var(--accent)' : 'var(--ink-3)' }}><Icon name="banknote" size={14} /></span>
-                        {m.pendingShare && <span title="در حال تأمین سهم" style={{ display: 'inline-flex', flex: 'none', color: 'var(--accent)' }}><Icon name="arrowUpRight" size={13} /></span>}
                         {m.status === 'active'
                           ? <LoanStatus m={m} isNext={m.id === nextId} />
                           : <StatusPill status={m.status} />}
@@ -486,7 +490,7 @@ function MembersTable({ fund, isMobile }) {
                   </tr>
                   {isOpen && (
                     <tr style={{ borderBottom: '1px solid var(--hair)', background: 'var(--surface-2)' }}>
-                      <td colSpan={7} style={{ padding: '4px 38px 20px 22px' }}>
+                      <td colSpan={8} style={{ padding: '4px 38px 20px 22px' }}>
                         <ShareDetail m={m} />
                         <MemberActions m={m} />
                       </td>

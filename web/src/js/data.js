@@ -98,7 +98,6 @@
   const loanOrder = active.slice();
   const loanNext = loanOrder.find((m) => !m.loanReceived) || null;
   const loanReceivedCount = loanOrder.filter((m) => m.loanReceived).length;
-  const loanRound = 3;
   const queue = loanOrder.filter((m) => !m.loanReceived);
 
   // 5 loans on fully-funded (eligible) members
@@ -137,6 +136,7 @@
   const totalShares = members.reduce((t, m) => t + m.nShares, 0);
   const totalPool = members.reduce((t, m) => t + m.savings, 0);
   const outstanding = members.reduce((t, m) => t + (m.loan ? m.loan.outstanding : 0), 0);
+  const loanedOut = members.reduce((t, m) => t + (m.loan ? m.loan.principal : 0), 0);
   const available = totalPool - outstanding;
   const activeLoans = members.filter((m) => m.loan).length;
   const needsAttention = members.filter((m) => m.behind).length;
@@ -174,10 +174,10 @@
     members,
     families: byFamily,
     familiesCount: FAMILIES.length,
-    queue, nextUp: loanNext, loanOrder, loanNext, loanRound, loanReceivedCount, loanTotal: loanOrder.length,
+    queue, nextUp: loanNext, loanOrder, loanNext, loanReceivedCount, loanTotal: loanOrder.length,
     growth, purchasing, purchaseAgg,
     kpis: {
-      totalPool, available, outstanding, activeLoans,
+      totalPool, available, outstanding, loanedOut, activeLoans,
       memberCount: members.length, familiesCount: FAMILIES.length, totalShares, needsAttention,
       purchasing: purchasing.length, loanEligible: loanEligibleCount, parValue: PAR, loanPerShare: LOAN_PER_SHARE,
     },

@@ -45,8 +45,9 @@ function LoanAttentionCard({ fund, onAttention }) {
   );
 }
 
-/* StatRow — three equal cards in one row: current loans, members, shares.
-   No descriptive sub-line; money value wraps its unit so it never leaks. */
+/* StatRow — four cards: total lent out, total remaining, members, shares.
+   The two loan money cards lead; money values wrap their unit so they never leak.
+   On mobile the two money cards each span the full width for breathing room. */
 function StatRow({ fund, onMembers, isMobile }) {
   const k = fund.kpis;
   const card = {
@@ -56,13 +57,23 @@ function StatRow({ fund, onMembers, isMobile }) {
   };
   const label = { fontSize: 11.5, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--ink-3)' };
   const num = { fontSize: 24, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.1 };
+  const moneyRow = { display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 5, rowGap: 0, minWidth: 0 };
+  const unit = { fontSize: 12.5, fontWeight: 500, color: 'var(--ink-3)' };
+  const wide = isMobile ? { gridColumn: '1 / -1' } : null;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 14, marginTop: 14 }}>
-      <div style={{ ...card, ...(isMobile ? { gridColumn: '1 / -1' } : null) }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 14, marginTop: 14 }}>
+      <div style={{ ...card, ...wide }}>
         <div style={label}>وام‌های جاری</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 5, rowGap: 0, minWidth: 0 }}>
+        <div style={moneyRow}>
+          <span className="mono" style={num}>{fmt(k.loanedOut)}</span>
+          <span style={unit}>تومان</span>
+        </div>
+      </div>
+      <div style={{ ...card, ...wide }}>
+        <div style={label}>ماندهٔ کل وام‌ها</div>
+        <div style={moneyRow}>
           <span className="mono" style={num}>{fmt(k.outstanding)}</span>
-          <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ink-3)' }}>تومان</span>
+          <span style={unit}>تومان</span>
         </div>
       </div>
       <div style={{ ...card, cursor: 'pointer' }} onClick={onMembers}>
@@ -85,9 +96,9 @@ function StatRowSkeleton({ isMobile }) {
     display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0,
   };
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 14, marginTop: 14 }}>
-      {[0, 1, 2].map((i) => (
-        <div key={i} style={{ ...card, ...(isMobile && i === 0 ? { gridColumn: '1 / -1' } : null) }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 14, marginTop: 14 }}>
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} style={{ ...card, ...(isMobile && i < 2 ? { gridColumn: '1 / -1' } : null) }}>
           <Skel width={84} height={11} radius={5} />
           <Skel width={104} height={24} radius={6} style={{ marginTop: 2 }} />
         </div>

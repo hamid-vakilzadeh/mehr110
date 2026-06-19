@@ -69,9 +69,8 @@ export interface ConfigDoc {
   asOf: Timestamp;
 }
 
-/** fund/loanRotation — round-based loan order (admin-managed) */
+/** fund/loanRotation — loan turn order (admin-managed) */
 export interface LoanRotationDoc {
-  round: number;
   order: string[]; // memberIds — drag to reorder
 }
 

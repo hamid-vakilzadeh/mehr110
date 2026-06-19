@@ -189,11 +189,11 @@ function build() {
     }
   });
 
-  return { members, order: order.map((m) => m.id), round: 3, lastReceiptNo: receiptNo };
+  return { members, order: order.map((m) => m.id), lastReceiptNo: receiptNo };
 }
 
 export async function writeSeed(): Promise<{ members: number; loans: number; behind: number }> {
-  const { members, order, round, lastReceiptNo } = build();
+  const { members, order, lastReceiptNo } = build();
 
   await db.collection(COL.fund).doc(FUND_DOC.config).set({
     name: "صندوق مهر۱۱۰",
@@ -206,7 +206,7 @@ export async function writeSeed(): Promise<{ members: number; loans: number; beh
     asOf: FieldValue.serverTimestamp(),
     lastReceiptNo,
   });
-  await db.collection(COL.fund).doc(FUND_DOC.loanRotation).set({ round, order });
+  await db.collection(COL.fund).doc(FUND_DOC.loanRotation).set({ order });
 
   let batch = db.batch();
   let ops = 0;

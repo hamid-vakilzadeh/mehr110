@@ -128,14 +128,30 @@ function useFund() {
   return { fund: window.FUND, ready };
 }
 
-// How many installments a member is BEHIND on their loan: expected (whole months
-// since the loan was issued, capped at the term) minus installments actually paid.
+// Jalali (Persian-calendar) year+month for an epoch-ms, in the fund's locale.
+// Used so loan-installment timing follows Jalali month boundaries, not Gregorian.
+const _jYMFmt = new Intl.DateTimeFormat('en-US-u-ca-persian-nu-latn', { year: 'numeric', month: 'numeric', timeZone: 'Asia/Tehran' });
+function jalaliYM(ms) {
+  let y = 0, m = 0;
+  for (const p of _jYMFmt.formatToParts(new Date(ms))) {
+    if (p.type === 'year') y = parseInt(p.value, 10);
+    else if (p.type === 'month') m = parseInt(p.value, 10);
+  }
+  return { y, m };
+}
+
+// How many installments a member is BEHIND on their loan. The first installment
+// is due the Jalali month AFTER the loan is issued (a loan issued in Khordad has
+// its first installment due in Tir), so `expected` = whole Jalali months elapsed
+// since issuance, capped at the term, minus installments actually paid. Counting on
+// Jalali (not Gregorian) months matters near month boundaries — the fund's whole
+// cycle (par advancement, payment dates) is Jalali.
 // 0 when there's no active loan, no issue date, or they're on/ahead of schedule.
 function loanBehind(loan) {
   if (!loan || loan.status === 'repaid' || !loan.issuedAt) return 0;
-  const now = new Date();
-  const iss = new Date(loan.issuedAt);
-  const monthsElapsed = (now.getFullYear() - iss.getFullYear()) * 12 + (now.getMonth() - iss.getMonth());
+  const iss = jalaliYM(loan.issuedAt);
+  const now = jalaliYM(Date.now());
+  const monthsElapsed = (now.y - iss.y) * 12 + (now.m - iss.m);
   const term = loan.termMonths != null ? loan.termMonths : (loan.term || 0);
   const expected = Math.max(0, Math.min(term, monthsElapsed));
   const paid = loan.installmentsPaid != null
@@ -144,4 +160,19 @@ function loanBehind(loan) {
   return Math.max(0, expected - paid);
 }
 
-Object.assign(window, { fmt, faPct, faDigits, Money, Icon, StatusPill, useIsMobile, Skel, SkelText, SkelCircle, useFund, loanBehind });
+// Shared loan-severity color: maps a loan's REMAINING-balance percentage (0–100)
+// to a single color on a green→amber→terracotta scale. Small remaining = calm
+// (green), large remaining = alarming (red). Expressed in oklch so it renders
+// identically in the browser and in the Chromium-rendered PDF reports — the same
+// scale is duplicated in functions/src/reports for parity.
+function loanRemColor(remPct) {
+  const p = Math.max(0, Math.min(100, remPct)) / 100;
+  const stops = [[0.52, 0.10, 158], [0.62, 0.13, 70], [0.55, 0.155, 35]]; // [L,C,H] at 0%, 50%, 100%
+  const [a, b, t] = p <= 0.5 ? [stops[0], stops[1], p / 0.5] : [stops[1], stops[2], (p - 0.5) / 0.5];
+  const L = a[0] + (b[0] - a[0]) * t;
+  const C = a[1] + (b[1] - a[1]) * t;
+  const H = a[2] + (b[2] - a[2]) * t;
+  return `oklch(${L.toFixed(3)} ${C.toFixed(3)} ${H.toFixed(1)})`;
+}
+
+Object.assign(window, { fmt, faPct, faDigits, Money, Icon, StatusPill, useIsMobile, Skel, SkelText, SkelCircle, useFund, loanBehind, loanRemColor });

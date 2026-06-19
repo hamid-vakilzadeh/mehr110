@@ -60,13 +60,13 @@ const dash = {
   queueIds: ["m12", "m4"],
   loanOrderIds: ["m1", "m12", "m4"],
   loanNextId: "m12",
-  loanRound: 3, loanReceivedCount: 1, loanTotal: 3,
-  kpis: { totalPool: 0, available: 0, outstanding: 27500000, activeLoans: 2, memberCount: 5, familiesCount: 3, totalShares: 9, needsAttention: 1, loanEligible: 3, parValue: PAR, loanPerShare: LPS },
+  loanReceivedCount: 1, loanTotal: 3,
+  kpis: { totalPool: 0, available: 0, outstanding: 27500000, loanedOut: 30000000, activeLoans: 2, memberCount: 5, familiesCount: 3, totalShares: 9, needsAttention: 1, loanEligible: 3, parValue: PAR, loanPerShare: LPS },
 };
 dash.kpis.totalPool = dash.members.reduce((t, m) => t + m.savings, 0);
 dash.kpis.available = dash.kpis.totalPool - dash.kpis.outstanding;
 
-const ms = memberStatement.render({ member, parValue: PAR, asOfMs: NOW, loanRound: 3, queuePos: 1 });
+const ms = memberStatement.render({ member, parValue: PAR, asOfMs: NOW, queuePos: 1 });
 const fs2 = fundSummary.render(dash);
 
 function sanity(name, html) {

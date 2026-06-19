@@ -428,30 +428,33 @@ function Statement() {
       </Card>
 
       {/* loan */}
-      {m.loan && (
-        <Card title="وام فعال" icon="coins" right={
+      {m.loan && (() => {
+        const remPct = m.loan.principal > 0 ? Math.round((m.loan.outstanding / m.loan.principal) * 100) : 0;
+        return (
+        <Card title="وام فعال" icon="banknote" right={
           <div style={{ display: 'flex', gap: 6 }}>
             <button title="ویرایش وام" onClick={() => setEditLoan(true)} style={txnIconBtn}><Icon name="edit" size={14} stroke={1.8} style={{ color: 'var(--ink-2)' }} /></button>
             <button title="حذف وام" onClick={() => setDelLoan(true)} style={{ ...txnIconBtn, borderColor: 'var(--warn-line)', background: 'var(--warn-soft)' }}><Icon name="trash" size={14} stroke={1.8} style={{ color: 'var(--warn)' }} /></button>
           </div>
         }>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-            {[['اصل وام', m.loan.principal], ['قسط ماهانه', m.loan.monthly], ['مانده', m.loan.outstanding]].map(([l, v]) => (
+            {[['اصل وام', m.loan.principal, false], ['قسط ماهانه', m.loan.monthly, false], ['مانده', m.loan.outstanding, true]].map(([l, v, sev]) => (
               <div key={l}>
                 <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{l}</div>
-                <div className="mono" style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>{fmt(v)}</div>
+                <div className="mono" style={{ fontSize: 16, fontWeight: 600, color: sev ? loanRemColor(remPct) : 'var(--ink)', marginTop: 2 }}>{fmt(v)}</div>
               </div>
             ))}
           </div>
           <div style={{ height: 9, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{ width: `${m.loan.pct}%`, height: '100%', background: 'var(--accent)', borderRadius: 99 }} />
+            <div style={{ width: `${m.loan.pct}%`, height: '100%', background: loanRemColor(remPct), borderRadius: 99 }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12.5, color: 'var(--ink-3)' }}>
             <span>{fmt(m.loan.installmentsPaid)} از {fmt(m.loan.term)} قسط پرداخت‌شده</span>
-            <span className="mono" style={{ fontWeight: 600, color: 'var(--accent)' }}>{faPct(m.loan.pct)}٪ بازپرداخت</span>
+            <span className="mono" style={{ fontWeight: 600, color: loanRemColor(remPct) }}>{faPct(m.loan.pct)}٪ بازپرداخت</span>
           </div>
         </Card>
-      )}
+        );
+      })()}
 
       {/* transactions header + add-payment action */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>

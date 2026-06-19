@@ -131,7 +131,6 @@
       loanOrder: resolve(p.loanOrderIds),
       loanNext: byId[p.loanNextId] || null,
       nextUp: byId[p.loanNextId] || null,
-      loanRound: p.loanRound,
       loanReceivedCount: p.loanReceivedCount,
       loanTotal: p.loanTotal,
       queue: resolve(p.queueIds),
