@@ -453,6 +453,14 @@ function Statement() {
         </Card>
       )}
 
+      {/* transactions header + add-payment action */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+        <h3 style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--ink-2)' }}>تراکنش‌ها و رسیدها</h3>
+        <a href={`record-payment.html?m=${m.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 9, background: 'var(--accent)', color: 'var(--surface)', textDecoration: 'none', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
+          <Icon name="check" size={15} stroke={2} /> ثبت پرداخت جدید
+        </a>
+      </div>
+
       {/* payment receipts — expandable on demand; admin can edit/delete each */}
       <Receipts title="رسیدهای پس‌انداز و حق عضویت" rows={m.seedReceipts} member={m} onChanged={reload} />
       {m.installmentReceipts.length > 0 && <Receipts title="رسیدهای اقساط وام" rows={m.installmentReceipts} member={m} onChanged={reload} />}

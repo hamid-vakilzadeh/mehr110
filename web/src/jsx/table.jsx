@@ -35,6 +35,7 @@ function SortHead({ col, sortKey, sortDir, onSort }) {
 }
 
 function ShareDetail({ m }) {
+  const isMobile = useIsMobile();
   const par = (window.FUND.settings && window.FUND.settings.parValue) || 0;
   const stats = [
     ['تعداد سهم', fmt(m.nShares), false],
@@ -43,7 +44,7 @@ function ShareDetail({ m }) {
     ['سقف وام', fmt(m.maxLoan) + ' تومان', true],
   ];
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: m.loan ? '1.1fr 1fr' : '1fr', gap: 28, padding: '4px 2px 6px', maxWidth: m.loan ? 'none' : 620 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : (m.loan ? '1.1fr 1fr' : '1fr'), gap: isMobile ? 16 : 28, padding: '4px 2px 6px', maxWidth: (isMobile || m.loan) ? 'none' : 620 }}>
       {/* shares & savings */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
@@ -313,12 +314,6 @@ function MembersTable({ fund, isMobile }) {
   const curPage = Math.min(page, pageCount - 1);
   const pageRows = viewAll ? rows : rows.slice(curPage * PAGE, curPage * PAGE + PAGE);
 
-  const chip = (label, onClear) => (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 500, color: 'var(--warn)', background: 'var(--warn-soft)', border: '1px solid var(--warn-line)', borderRadius: 99, padding: '5px 9px 5px 11px' }}>
-      <Icon name="alert" size={13} stroke={1.7} />{label}
-      <button onClick={onClear} style={{ display: 'grid', placeItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--warn)', padding: 0 }}><Icon name="x" size={13} /></button>
-    </span>
-  );
 
   return (
     <div>
@@ -345,6 +340,24 @@ function MembersTable({ fund, isMobile }) {
         }}>
           <Icon name="arrowUpRight" size={15} stroke={1.7} /> در حال تأمین
         </button>
+        <button onClick={() => setBehindOnly((v) => !v)} title="فقط اعضای عقب‌افتاده در پرداخت پس‌انداز/حق عضویت" style={{
+          height: 40, padding: '0 13px', borderRadius: 10, cursor: 'pointer', font: 'inherit', flex: 'none',
+          display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap',
+          border: `1px solid ${behindOnly ? 'var(--warn-line)' : 'var(--hair)'}`,
+          background: behindOnly ? 'var(--warn-soft)' : 'var(--surface)',
+          color: behindOnly ? 'var(--warn)' : 'var(--ink-2)',
+        }}>
+          <Icon name="alert" size={15} stroke={1.7} /> عقب در پرداخت
+        </button>
+        <button onClick={() => setLoanBehindOnly((v) => !v)} title="فقط اعضای عقب‌افتاده در اقساط وام" style={{
+          height: 40, padding: '0 13px', borderRadius: 10, cursor: 'pointer', font: 'inherit', flex: 'none',
+          display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap',
+          border: `1px solid ${loanBehindOnly ? 'var(--warn-line)' : 'var(--hair)'}`,
+          background: loanBehindOnly ? 'var(--warn-soft)' : 'var(--surface)',
+          color: loanBehindOnly ? 'var(--warn)' : 'var(--ink-2)',
+        }}>
+          <Icon name="clock" size={15} stroke={1.7} /> اقساط عقب
+        </button>
         <button onClick={() => { clearAll(); setSortKey('rank'); setSortDir('asc'); setViewAll(true); }} title="نمایش به ترتیب نوبت وام (برای جابه‌جایی با کشیدن)" style={{
           height: 40, padding: '0 13px', borderRadius: 10, cursor: 'pointer', font: 'inherit', flex: 'none',
           display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap',
@@ -353,8 +366,6 @@ function MembersTable({ fund, isMobile }) {
         }}>
           <Icon name="grip" size={15} /> ترتیب نوبت وام
         </button>
-        {behindOnly && chip('عقب‌افتاده در پرداخت', () => setBehindOnly(false))}
-        {loanBehindOnly && chip('اقساط عقب‌افتاده', () => setLoanBehindOnly(false))}
         <div style={{ marginInlineStart: 'auto', fontSize: 13, color: 'var(--ink-3)' }}>
           {fmt(rows.length)} از {fmt(fund.members.length)} عضو
         </div>

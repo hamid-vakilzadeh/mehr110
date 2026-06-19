@@ -58,7 +58,7 @@ function StatRow({ fund, onMembers, isMobile }) {
   const num = { fontSize: 24, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.1 };
   return (
     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 14, marginTop: 14 }}>
-      <div style={card}>
+      <div style={{ ...card, ...(isMobile ? { gridColumn: '1 / -1' } : null) }}>
         <div style={label}>وام‌های جاری</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 5, rowGap: 0, minWidth: 0 }}>
           <span className="mono" style={num}>{fmt(k.outstanding)}</span>
@@ -69,7 +69,7 @@ function StatRow({ fund, onMembers, isMobile }) {
         <div style={label}>اعضا</div>
         <span className="mono" style={num}>{fmt(k.memberCount)}</span>
       </div>
-      <div style={{ ...card, ...(isMobile ? { gridColumn: '1 / -1' } : null) }}>
+      <div style={card}>
         <div style={label}>تعداد سهم‌ها</div>
         <span className="mono" style={num}>{fmt(k.totalShares)}</span>
       </div>
@@ -87,7 +87,7 @@ function StatRowSkeleton({ isMobile }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 14, marginTop: 14 }}>
       {[0, 1, 2].map((i) => (
-        <div key={i} style={{ ...card, ...(isMobile && i === 2 ? { gridColumn: '1 / -1' } : null) }}>
+        <div key={i} style={{ ...card, ...(isMobile && i === 0 ? { gridColumn: '1 / -1' } : null) }}>
           <Skel width={84} height={11} radius={5} />
           <Skel width={104} height={24} radius={6} style={{ marginTop: 2 }} />
         </div>
