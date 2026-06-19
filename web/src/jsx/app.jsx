@@ -118,29 +118,35 @@ function App() {
       {ready && <LoanAttentionCard fund={fund}
         onAttention={() => { setView('members'); window.dispatchEvent(new Event('focus-loan-behind')); setTimeout(scrollToMembers, 60); }} />}
 
-      {/* ---- at a glance (starting section) ---- */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '0 0 16px' }}>
-        <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)', lineHeight: 1.3 }}>صندوق در یک نگاه</h2>
-        <span style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
-      </div>
-      {ready ? <Composition fund={fund} /> : <ChartSkeleton isMobile={isMobile} />}
-
-      {/* ---- three stat cards, one row, below the chart ---- */}
-      {ready
-        ? <StatRow fund={fund} isMobile={isMobile}
-            onMembers={() => { setView('members'); setTimeout(scrollToMembers, 60); }} />
-        : <StatRowSkeleton isMobile={isMobile} />}
-
-      {/* ---- 3-month budget forecast (expected income: membership + installments) ---- */}
-      {ready && (
-        <React.Fragment>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '32px 0 16px' }}>
-            <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)', lineHeight: 1.3 }}>بودجهٔ سه ماه آینده</h2>
+      {/* ---- at a glance + 3-month budget, side by side ---- */}
+      {(() => {
+        const heading = (txt) => (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '0 0 16px' }}>
+            <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 22, color: 'var(--ink)', lineHeight: 1.3 }}>{txt}</h2>
             <span style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
           </div>
-          <BudgetChart fund={fund} />
-        </React.Fragment>
-      )}
+        );
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 26 : 20, alignItems: 'start' }}>
+            <div style={{ minWidth: 0 }}>
+              {heading('صندوق در یک نگاه')}
+              {ready ? <Composition fund={fund} /> : <ChartSkeleton isMobile={isMobile} />}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              {heading('بودجهٔ سه ماه آینده')}
+              {ready ? <BudgetChart fund={fund} /> : <ChartSkeleton isMobile={isMobile} />}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ---- three stat cards, one row, below the charts ---- */}
+      <div style={{ marginTop: 20 }}>
+        {ready
+          ? <StatRow fund={fund} isMobile={isMobile}
+              onMembers={() => { setView('members'); setTimeout(scrollToMembers, 60); }} />
+          : <StatRowSkeleton isMobile={isMobile} />}
+      </div>
 
       {/* ---- workhorse: members / families (purchasing is now a filter inside) ---- */}
       <div id="members-section" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, margin: '40px 0 16px', scrollMarginTop: 16, flexWrap: 'wrap' }}>

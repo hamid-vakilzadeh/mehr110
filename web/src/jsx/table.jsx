@@ -2,13 +2,16 @@
    expandable rows (share-by-share + loan detail). Behind = reserved warning + icon. */
 
 const COLS = [
-  { key: 'name',        label: 'عضو',       w: '' },
-  { key: 'family',      label: 'خانواده',     w: '120px' },
-  { key: 'nShares',     label: 'سهم‌ها',     w: '78px' },
-  { key: 'fundedPct',   label: 'تأمین سهم',  w: '128px' },
-  { key: 'seedBalance', label: 'موجودی',      w: '120px' },
-  { key: 'status',      label: 'وضعیت',      w: '100px' },
+  { key: 'name',          label: 'عضو',       w: '' },
+  { key: 'family',        label: 'خانواده',     w: '120px' },
+  { key: 'nShares',       label: 'سهم‌ها',     w: '78px' },
+  { key: 'fundedPct',     label: 'تأمین سهم',  w: '128px' },
+  { key: 'loanRemaining', label: 'ماندهٔ وام', w: '128px' },
+  { key: 'status',        label: 'وضعیت',      w: '100px' },
 ];
+
+/* remaining % of a member's loan principal still owed (0 if no loan) */
+const remPctOf = (m) => (m.loan && m.loan.principal > 0 ? Math.round((m.loan.outstanding / m.loan.principal) * 100) : 0);
 
 const ALL_FAM = 'همهٔ خانواده‌ها';
 const PAGE = 12; // rows per page
@@ -48,11 +51,11 @@ function ShareDetail({ m }) {
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
             padding: '3px 9px', borderRadius: 99,
-            color: m.loanEligible ? 'var(--accent)' : 'var(--ink-3)',
-            background: m.loanEligible ? 'var(--accent-soft)' : 'var(--surface-2)',
-            border: `1px solid ${m.loanEligible ? 'var(--accent-line)' : 'var(--hair)'}`,
+            color: m.loanEligible ? 'var(--accent)' : 'var(--warn)',
+            background: m.loanEligible ? 'var(--accent-soft)' : 'var(--warn-soft)',
+            border: `1px solid ${m.loanEligible ? 'var(--accent-line)' : 'var(--warn-line)'}`,
           }}>
-            <Icon name={m.loanEligible ? 'check' : 'x'} size={12} stroke={2} />
+            <Icon name={m.loanEligible ? 'check' : 'alert'} size={12} stroke={2} />
             {m.loanEligible ? 'واجد شرایط وام' : 'واجد شرایط وام نیست'}
           </span>
         </div>
@@ -155,22 +158,26 @@ function MemberCards({ rows, open, setOpen, onClear, noMembers, nextId }) {
                 <span>خانوادهٔ {m.family}{m.behind && <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · {fmt(m.missed)} قسط عقب</span>}</span>
                 <LoanStatus m={m} isNext={m.id === nextId} />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
-                <div style={{ flex: 1 }}>
+              {/* funding progress (savings live in the expanded card) */}
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ink-3)', marginBottom: 5 }}>
+                  <span>تأمین {fmt(m.nShares)} سهم</span>
+                  <span className="mono" style={{ fontWeight: 600, color: m.fundedPct >= 100 ? 'var(--accent)' : 'var(--ink-2)' }}>{faPct(m.fundedPct)}٪</span>
+                </div>
+                <div style={{ height: 7, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
+                  <div style={{ width: `${m.fundedPct}%`, height: '100%', background: m.fundedPct >= 100 ? 'var(--accent)' : m.behind ? 'var(--warn)' : 'var(--fill-1)', borderRadius: 99 }} />
+                </div>
+              </div>
+              {/* loan remainder — warn progress bar */}
+              {m.loan && (
+                <div style={{ marginTop: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ink-3)', marginBottom: 5 }}>
-                    <span>تأمین {fmt(m.nShares)} سهم</span>
-                    <span className="mono" style={{ fontWeight: 600, color: m.fundedPct >= 100 ? 'var(--accent)' : 'var(--ink-2)' }}>{faPct(m.fundedPct)}٪</span>
+                    <span>ماندهٔ وام{loanBehind(m.loan) > 0 && <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · {fmt(loanBehind(m.loan))} قسط عقب</span>}</span>
+                    <span className="mono" style={{ fontWeight: 600, color: 'var(--warn)' }}>{faPct(remPctOf(m))}٪</span>
                   </div>
                   <div style={{ height: 7, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
-                    <div style={{ width: `${m.fundedPct}%`, height: '100%', background: m.fundedPct >= 100 ? 'var(--accent)' : m.behind ? 'var(--warn)' : 'var(--fill-1)', borderRadius: 99 }} />
+                    <div style={{ width: `${remPctOf(m)}%`, height: '100%', background: 'var(--warn)', borderRadius: 99 }} />
                   </div>
-                </div>
-                <Money value={m.seedBalance} unit="تومان" style={{ fontSize: 16, fontWeight: 600, color: 'var(--accent)', flex: 'none' }} />
-              </div>
-              {m.loan && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--hair-2)', fontSize: 12.5 }}>
-                  <span style={{ color: 'var(--ink-3)' }}>ماندهٔ وام{loanBehind(m.loan) > 0 && <span style={{ color: 'var(--warn)', fontWeight: 600 }}> · {fmt(loanBehind(m.loan))} قسط عقب</span>}</span>
-                  <Money value={m.loan.outstanding} unit="تومان" style={{ fontSize: 15, fontWeight: 600, color: loanBehind(m.loan) > 0 ? 'var(--warn)' : 'var(--ink-2)' }} />
                 </div>
               )}
             </div>
@@ -269,6 +276,7 @@ function MembersTable({ fund, isMobile }) {
       if (sortKey === 'sinceSort') return m.since.y * 12 + m.since.m;
       if (sortKey === 'status') return m.status === 'active' ? 1 : 0;
       if (sortKey === 'fundedPct') return m.fundedPct;
+      if (sortKey === 'loanRemaining') return m.loan ? m.loan.outstanding : -1;
       return m[sortKey];
     };
     r.sort((a, b) => {
@@ -442,12 +450,16 @@ function MembersTable({ fund, isMobile }) {
                         <span className="mono" style={{ fontSize: 12.5, fontWeight: 600, color: m.fundedPct >= 100 ? 'var(--accent)' : 'var(--ink-2)', width: 38, textAlign: 'left', flex: 'none' }}>{faPct(m.fundedPct)}٪</span>
                       </div>
                     </td>
-                    <td style={{ padding: '13px 14px', textAlign: 'right' }}>
-                      <span className="mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{fmt(m.seedBalance)}</span>
-                      {m.loan && (
-                        <div style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2, whiteSpace: 'nowrap' }}>
-                          ماندهٔ وام <span className="mono" style={{ color: loanBehind(m.loan) > 0 ? 'var(--warn)' : 'var(--ink-2)', fontWeight: 600 }}>{fmt(m.loan.outstanding)}</span>
+                    <td style={{ padding: '13px 14px' }}>
+                      {m.loan ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} title={`ماندهٔ وام: ${fmt(m.loan.outstanding)} تومان`}>
+                          <div style={{ flex: 1, height: 6, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden', minWidth: 30 }}>
+                            <div style={{ width: `${remPctOf(m)}%`, height: '100%', background: 'var(--warn)', borderRadius: 99 }} />
+                          </div>
+                          <span className="mono" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warn)', width: 38, textAlign: 'left', flex: 'none' }}>{faPct(remPctOf(m))}٪</span>
                         </div>
+                      ) : (
+                        <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>—</span>
                       )}
                     </td>
                     <td style={{ padding: '13px 14px' }}><StatusPill status={m.status} /></td>
@@ -533,7 +545,12 @@ function MemberRowSkeleton() {
           <Skel width={30} height={12} radius={5} />
         </div>
       </td>
-      <td style={tdR}><Skel width={74} height={14} radius={5} style={{ display: 'inline-block' }} /></td>
+      <td style={td}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Skel height={6} radius={99} style={{ flex: 1, minWidth: 30 }} />
+          <Skel width={30} height={12} radius={5} />
+        </div>
+      </td>
       <td style={td}><Skel width={56} height={14} radius={99} /></td>
       <td style={{ padding: '13px 0 13px 12px' }}><Skel width={16} height={16} radius={5} /></td>
     </tr>

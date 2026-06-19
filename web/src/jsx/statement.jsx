@@ -376,11 +376,11 @@ function Statement() {
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap',
             padding: '4px 10px', borderRadius: 99,
-            color: m.loanEligible ? 'var(--accent)' : 'var(--ink-3)',
-            background: m.loanEligible ? 'var(--accent-soft)' : 'var(--surface-2)',
-            border: `1px solid ${m.loanEligible ? 'var(--accent-line)' : 'var(--hair)'}`,
+            color: m.loanEligible ? 'var(--accent)' : 'var(--warn)',
+            background: m.loanEligible ? 'var(--accent-soft)' : 'var(--warn-soft)',
+            border: `1px solid ${m.loanEligible ? 'var(--accent-line)' : 'var(--warn-line)'}`,
           }}>
-            <Icon name={m.loanEligible ? 'check' : 'x'} size={13} stroke={2} />
+            <Icon name={m.loanEligible ? 'check' : 'alert'} size={13} stroke={2} />
             {m.loanEligible ? 'واجد شرایط وام' : 'واجد شرایط وام نیست'}
           </span>
         </div>
