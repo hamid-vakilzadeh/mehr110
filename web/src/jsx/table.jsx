@@ -56,7 +56,7 @@ function ShareDetail({ m }) {
             background: m.loanEligible ? 'var(--accent-soft)' : 'var(--warn-soft)',
             border: `1px solid ${m.loanEligible ? 'var(--accent-line)' : 'var(--warn-line)'}`,
           }}>
-            <Icon name={m.loanEligible ? 'check' : 'alert'} size={12} stroke={2} />
+            <Icon name={m.loanEligible ? 'piggyBank' : 'alert'} size={13} stroke={1.9} />
             {m.loanEligible ? 'واجد شرایط وام' : 'واجد شرایط وام نیست'}
           </span>
         </div>
@@ -87,7 +87,7 @@ function ShareDetail({ m }) {
       {m.loan && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--hair)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 12, whiteSpace: 'nowrap' }}>
-            <Icon name="coins" size={14} /> وام فعال
+            <Icon name="banknote" size={14} /> وام فعال
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
             {[['اصل وام', m.loan.principal, false], ['قسط ماهانه', m.loan.monthly, false], ['مانده', m.loan.outstanding, true]].map(([l, v, hl]) => (
@@ -117,7 +117,7 @@ function MemberActions({ m }) {
   return (
     <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--hair-2)', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       <a href={`record-payment.html?m=${m.id}`} style={{ ...base, background: 'var(--accent)', color: 'var(--surface)' }}><Icon name="check" size={15} stroke={2} /> ثبت پرداخت</a>
-      <a href={`record-loan.html?m=${m.id}`} style={ghost}><Icon name="coins" size={15} stroke={1.7} /> ثبت وام</a>
+      <a href={`record-loan.html?m=${m.id}`} style={ghost}><Icon name="banknote" size={15} stroke={1.7} /> ثبت وام</a>
       <a href={`statement.html?m=${m.id}`} style={ghost}><Icon name="arrowR" size={15} stroke={1.8} style={{ transform: 'scaleX(-1)' }} /> صورت‌حساب</a>
     </div>
   );
@@ -150,8 +150,8 @@ function MemberCards({ rows, open, setOpen, onClear, noMembers, nextId }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {m.behind && <Icon name="alert" size={15} stroke={1.7} style={{ color: 'var(--warn)' }} />}
                 <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', flex: 1 }}>{m.name}</span>
-                {m.loanEligible && <span title="واجد شرایط وام" style={{ display: 'inline-flex', color: 'var(--accent)' }}><Icon name="check" size={14} stroke={2.2} /></span>}
-                {m.loan && <Icon name="coins" size={14} style={{ color: 'var(--ink-3)' }} />}
+                {m.loanEligible && <span title="واجد شرایط وام (سهم تأمین‌شده)" style={{ display: 'inline-flex', color: 'var(--accent)' }}><Icon name="piggyBank" size={15} stroke={1.8} /></span>}
+                <Icon name="banknote" size={15} title={m.loan ? 'وام فعال دارد' : 'بدون وام'} style={{ color: m.loan ? 'var(--accent)' : 'var(--ink-3)' }} />
                 {m.pendingShare && <Icon name="arrowUpRight" size={14} style={{ color: 'var(--accent)' }} />}
                 <Icon name="chevron" size={15} style={{ color: 'var(--ink-3)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .18s ease' }} />
               </div>
@@ -446,7 +446,7 @@ function MembersTable({ fund, isMobile }) {
                           : <span style={{ width: 15, flex: 'none' }} />}
                         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', flexShrink: 0 }}>{m.name}</span>
                         {m.behind && <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--warn)', whiteSpace: 'nowrap' }}>· {fmt(m.missed)} قسط عقب</span>}
-                        {m.loan && <span title="وام فعال دارد" style={{ display: 'inline-flex', color: 'var(--ink-3)' }}><Icon name="coins" size={13} /></span>}
+                        <span title={m.loan ? 'وام فعال دارد' : 'بدون وام'} style={{ display: 'inline-flex', color: m.loan ? 'var(--accent)' : 'var(--ink-3)' }}><Icon name="banknote" size={13} /></span>
                         {m.pendingShare && <span title="سهم تأمین‌نشده" style={{ display: 'inline-flex', color: 'var(--accent)' }}><Icon name="arrowUpRight" size={13} /></span>}
                         <LoanStatus m={m} isNext={m.id === nextId} />
                       </div>

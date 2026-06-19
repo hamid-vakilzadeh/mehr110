@@ -99,7 +99,7 @@ function App() {
         const secondary = { ...base, background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--hair)' };
         const add = <a href="add-member.html" style={primary}><Icon name="userPlus" size={18} stroke={1.8} /> افزودن عضو</a>;
         const pay = <a href="record-payment.html" style={secondary}><Icon name="check" size={16} stroke={2} /> ثبت پرداخت</a>;
-        const loan = <a href="record-loan.html" style={secondary}><Icon name="coins" size={16} stroke={1.7} /> ثبت وام</a>;
+        const loan = <a href="record-loan.html" style={secondary}><Icon name="banknote" size={16} stroke={1.7} /> ثبت وام</a>;
         return isMobile ? (
           // mobile: full-width «افزودن عضو», then «ثبت پرداخت» / «ثبت وام» split below
           <div style={{ marginBottom: 22, display: 'flex', flexDirection: 'column', gap: 10 }}>

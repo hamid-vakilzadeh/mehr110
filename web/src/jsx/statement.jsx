@@ -380,7 +380,7 @@ function Statement() {
             background: m.loanEligible ? 'var(--accent-soft)' : 'var(--warn-soft)',
             border: `1px solid ${m.loanEligible ? 'var(--accent-line)' : 'var(--warn-line)'}`,
           }}>
-            <Icon name={m.loanEligible ? 'check' : 'alert'} size={13} stroke={2} />
+            <Icon name={m.loanEligible ? 'piggyBank' : 'alert'} size={14} stroke={1.9} />
             {m.loanEligible ? 'واجد شرایط وام' : 'واجد شرایط وام نیست'}
           </span>
         </div>

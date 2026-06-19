@@ -166,7 +166,7 @@ function RecordLoan() {
           <h1 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 27, color: 'var(--ink)', lineHeight: 1.3, whiteSpace: 'nowrap' }}>ثبت وام</h1>
         </div>
         <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent)', display: 'grid', placeItems: 'center', flex: 'none' }}>
-          <Icon name="coins" size={22} stroke={1.6} style={{ color: 'var(--surface)' }} />
+          <Icon name="banknote" size={22} stroke={1.6} style={{ color: 'var(--surface)' }} />
         </div>
       </div>
 
@@ -195,7 +195,7 @@ function RecordLoan() {
             background: member.loanEligible ? 'var(--accent-soft)' : 'var(--warn-soft)',
             border: `1px solid ${member.loanEligible ? 'var(--accent-line)' : 'var(--warn-line)'}`,
           }}>
-            <Icon name={member.loanEligible ? 'check' : 'alert'} size={13} stroke={2} />
+            <Icon name={member.loanEligible ? 'piggyBank' : 'alert'} size={14} stroke={1.9} />
             {member.loanEligible ? 'واجد شرایط وام' : 'واجد شرایط وام نیست'}
           </span>
         </div>

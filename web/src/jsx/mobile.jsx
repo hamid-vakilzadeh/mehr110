@@ -8,7 +8,7 @@ function MHeader() {
     <div style={{ padding: '0 18px 14px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
         <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--accent)', display: 'grid', placeItems: 'center', flex: 'none' }}>
-          <Icon name="coins" size={18} stroke={1.6} style={{ color: 'var(--surface)' }} />
+          <Icon name="banknote" size={18} stroke={1.6} style={{ color: 'var(--surface)' }} />
         </div>
         <div>
           <div style={{ fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 20, color: 'var(--ink)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>صندوق مهر۱۱۰</div>
@@ -110,7 +110,7 @@ function MemberCard({ m }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {m.behind && <Icon name="alert" size={15} stroke={1.7} style={{ color: 'var(--warn)' }} />}
         <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', flex: 1 }}>{m.name}</span>
-        {m.loan && <Icon name="coins" size={14} style={{ color: 'var(--ink-3)' }} />}
+        <Icon name="banknote" size={14} style={{ color: m.loan ? 'var(--accent)' : 'var(--ink-3)' }} />
         <Icon name="chevron" size={15} style={{ color: 'var(--ink-3)' }} />
       </div>
       <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 3 }}>
