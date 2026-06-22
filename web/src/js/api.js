@@ -285,6 +285,20 @@
     startNewRound: function () { return call("loanOrderStartNewRound", {}); },
     updateSettings: function (d) { return call("settingsUpdate", d); },
 
+    // ---------- activity log (append-only audit feed) ----------
+    // opts: { limit, before } — `before` is the previous page's `cursor` (ms).
+    activityList: function (o) {
+      o = o || {};
+      if (!LIVE) {
+        var all = (window.DEMO_ACTIVITY || []).slice(); // assumed newest-first
+        var lim = o.limit || 50;
+        var rows = (o.before ? all.filter(function (e) { return e.recordedAt < o.before; }) : all).slice(0, lim);
+        var cur = rows.length === lim ? rows[rows.length - 1].recordedAt : null;
+        return Promise.resolve({ entries: rows, cursor: cur });
+      }
+      return call("activityList", o);
+    },
+
     // current admin display name / email (for the settings page + UI)
     adminName: function () {
       if (LIVE) { var u = window.__fbUser; return (u && (u.displayName || u.email)) || ""; }

@@ -81,6 +81,17 @@ export const COL = {
   payments: "payments",
   fund: "fund",
   bankTxns: "bankTxns", // top-level uniqueness index: doc id = encoded bankTxnId
+  audit: "audit", // append-only activity log — one entry per mutating action
 } as const;
 
 export const FUND_DOC = { config: "config", loanRotation: "loanRotation" } as const;
+
+/** audit/{id} — one append-only entry per mutating action (the activity log). */
+export interface AuditEntry {
+  action: string; // dotted key, e.g. "payment.installment", "loan.delete"
+  summary: string; // human-readable Farsi one-liner
+  meta: Record<string, unknown>; // memberId/memberName/amount/old/new/receiptNo/loanId…
+  recordedBy: string | null; // admin uid (from rec())
+  recordedByName: string | null; // admin display name / email (the bot shows under its own name)
+  recordedAt: Timestamp; // server timestamp
+}
