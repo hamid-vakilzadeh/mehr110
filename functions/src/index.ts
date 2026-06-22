@@ -77,6 +77,40 @@ const rec = (req: CallableRequest) => ({
   recordedAt: FieldValue.serverTimestamp(),
 });
 
+/** Persian-grouped integer for audit summaries (e.g. 1000000 → «۱٬۰۰۰٬۰۰۰»). */
+const fa = (n: unknown) => Number(n || 0).toLocaleString("fa-IR");
+
+/** Append one entry to the append-only activity log (COL.audit). BEST-EFFORT:
+ *  a logging failure must NEVER fail the user's action, so errors are swallowed.
+ *  Undefined meta values are dropped (Firestore rejects undefined). Call AFTER the
+ *  mutation has committed. The MCP/Telegram bot calls the same callables, so its
+ *  actions are logged under its own recordedByName automatically. */
+async function writeAudit(
+  req: CallableRequest,
+  action: string,
+  summary: string,
+  meta: Record<string, unknown> = {}
+): Promise<void> {
+  try {
+    const clean: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(meta)) if (v !== undefined) clean[k] = v;
+    await db.collection(COL.audit).add({ action, summary, meta: clean, ...rec(req) });
+  } catch (e) {
+    console.error("audit write failed:", action, e);
+  }
+}
+
+/** A member's full name for log summaries (best-effort; falls back to the id). */
+async function nameOf(memberId: string): Promise<string> {
+  try {
+    const d = (await db.collection(COL.members).doc(memberId).get()).data();
+    const n = `${d?.firstName ?? ""} ${d?.lastName ?? ""}`.trim();
+    return n || memberId;
+  } catch {
+    return memberId;
+  }
+}
+
 /** Allocate the next human receipt number from fund/config.
  *  Firestore transactions require ALL reads before ANY writes, so this READS
  *  the counter now and returns a `commit()` to run during the write phase. */
@@ -261,6 +295,9 @@ export const membersCreate = onCall(async (req) => {
     });
   }
 
+  const name = `${firstName} ${lastName}`;
+  await writeAudit(req, "member.create", `${name} — عضو جدید${shares ? ` (${fa(shares)} سهم)` : ""}`,
+    { memberId: memberRef.id, memberName: name, shares });
   return { ok: true, id: memberRef.id };
 });
 
@@ -269,7 +306,9 @@ export const membersUpdate = onCall(async (req) => {
   const d = req.data ?? {};
   const id = str(d.id, "id");
   const ref = db.collection(COL.members).doc(id);
-  if (!(await ref.get()).exists) throw new HttpsError("not-found", "عضو یافت نشد.");
+  const beforeSnap = await ref.get();
+  if (!beforeSnap.exists) throw new HttpsError("not-found", "عضو یافت نشد.");
+  const before = beforeSnap.data() ?? {};
 
   const patch: Record<string, unknown> = {};
   if (d.firstName !== undefined) patch.firstName = str(d.firstName, "نام");
@@ -285,8 +324,16 @@ export const membersUpdate = onCall(async (req) => {
   if (Object.keys(patch).length === 0) {
     throw new HttpsError("invalid-argument", "هیچ فیلدی برای به‌روزرسانی ارسال نشده است.");
   }
+  const changedFields = Object.keys(patch);
   Object.assign(patch, rec(req));
   await ref.update(patch);
+
+  const name = `${patch.firstName ?? before.firstName ?? ""} ${patch.lastName ?? before.lastName ?? ""}`.trim() || id;
+  const notes: string[] = [];
+  if (patch.status !== undefined && patch.status !== before.status) notes.push(patch.status === "inactive" ? "غیرفعال شد" : "فعال شد");
+  if (patch.shares !== undefined && patch.shares !== before.shares) notes.push(`سهم ${fa(before.shares)}←${fa(patch.shares)}`);
+  await writeAudit(req, "member.update", `${name} — اطلاعات عضو ویرایش شد${notes.length ? ` (${notes.join("، ")})` : ""}`,
+    { memberId: id, memberName: name, fields: changedFields });
   return { ok: true, id };
 });
 
@@ -294,7 +341,9 @@ export const membersDelete = onCall(async (req) => {
   requireAdmin(req);
   const id = str(req.data?.id, "id");
   const ref = db.collection(COL.members).doc(id);
-  if (!(await ref.get()).exists) throw new HttpsError("not-found", "عضو یافت نشد.");
+  const delSnap = await ref.get();
+  if (!delSnap.exists) throw new HttpsError("not-found", "عضو یافت نشد.");
+  const delName = `${delSnap.data()?.firstName ?? ""} ${delSnap.data()?.lastName ?? ""}`.trim() || id;
 
   // delete subcollections (shares, loan, payments) then the member doc
   for (const sub of [COL.shares, COL.loan, COL.payments]) {
@@ -320,6 +369,8 @@ export const membersDelete = onCall(async (req) => {
     const order: string[] = (snap.data()?.order ?? []).filter((x: string) => x !== id);
     tx.update(rotRef, { order });
   });
+
+  await writeAudit(req, "member.delete", `${delName} — عضو حذف شد`, { memberId: id, memberName: delName });
   return { ok: true, id };
 });
 
@@ -340,6 +391,9 @@ export const sharesAdd = onCall(async (req) => {
     tx.update(ref, { shares: n, ...rec(req) });
     return n;
   });
+  const name = await nameOf(memberId);
+  await writeAudit(req, "share.add", `${name} — ${fa(add)} سهم اضافه شد (کل: ${fa(shares)})`,
+    { memberId, memberName: name, added: add, total: shares });
   return { ok: true, shares };
 });
 
@@ -386,6 +440,9 @@ export const paymentsRecordSeed = onCall(async (req) => {
 
   await refreshBehind(memberId);
   const cfg = await getConfig();
+  const name = await nameOf(memberId);
+  await writeAudit(req, "payment.seed", `${name} — پس‌انداز ${fa(amount)} ثبت شد (رسید ${out.no})`,
+    { memberId, memberName: name, amount, receiptNo: out.no, paymentId: out.paymentId });
   return {
     ok: true,
     savings: out.savings,
@@ -425,6 +482,9 @@ export const paymentsRecordInstallment = onCall(async (req) => {
     reserve();
     return { newOutstanding, status, no: receipt.no, paymentId: pRef.id };
   });
+  const name = await nameOf(memberId);
+  await writeAudit(req, "payment.installment", `${name} — قسط وام ${fa(amount)} ثبت شد (مانده ${fa(out.newOutstanding)})`,
+    { memberId, memberName: name, amount, loanId, receiptNo: out.no, outstanding: out.newOutstanding });
   return {
     ok: true,
     outstanding: out.newOutstanding,
@@ -520,10 +580,18 @@ export const paymentsUpdate = onCall(async (req) => {
     if (balanceUpdate) balanceUpdate();
     if (releaseOld) releaseBankTxn(tx, oldBank);
     reserve();
-    return { type: pay.type as string, ...resultExtra };
+    return { type: pay.type as string, no: (pay.no as string) ?? null, oldAmount, ...resultExtra };
   });
 
   if (out.type === "seed") await refreshBehind(memberId);
+  const name = await nameOf(memberId);
+  const amountChanged = hasAmount && newAmount !== out.oldAmount;
+  const summary = amountChanged
+    ? `${name} — مبلغ تراکنش ${fa(out.oldAmount)}←${fa(newAmount)} اصلاح شد${out.no ? ` (رسید ${out.no})` : ""}`
+    : `${name} — تراکنش ویرایش شد${out.no ? ` (رسید ${out.no})` : ""}`;
+  await writeAudit(req, "payment.update", summary,
+    { memberId, memberName: name, receiptNo: out.no ?? undefined, type: out.type,
+      oldAmount: amountChanged ? out.oldAmount : undefined, newAmount: amountChanged ? newAmount : undefined });
   return { ok: true, paymentId, ...out };
 });
 
@@ -570,10 +638,14 @@ export const paymentsDelete = onCall(async (req) => {
     if (balanceUpdate) balanceUpdate();
     releaseBankTxn(tx, bankTxnId);
     tx.delete(payRef);
-    return { type: pay.type as string, ...resultExtra };
+    return { type: pay.type as string, amount, no: (pay.no as string) ?? null, ...resultExtra };
   });
 
   if (out.type === "seed") await refreshBehind(memberId);
+  const name = await nameOf(memberId);
+  const kind = out.type === "seed" ? "پس‌انداز" : "قسط وام";
+  await writeAudit(req, "payment.delete", `${name} — ${kind} ${fa(out.amount)} حذف شد${out.no ? ` (رسید ${out.no})` : ""}`,
+    { memberId, memberName: name, amount: out.amount, receiptNo: out.no ?? undefined, type: out.type });
   return { ok: true, paymentId, ...out };
 });
 
@@ -656,6 +728,9 @@ export const loansIssue = onCall(async (req) => {
     tx.update(db.collection(COL.members).doc(memberId), { loanReceived: true });
     reserve();
   });
+  await writeAudit(req, "loan.issue",
+    `${member.name} — وام ${fa(principal)} (${fa(termMonths)} ماه، قسط ${fa(monthly)})${existing ? " ثبت" : " صادر"} شد`,
+    { memberId, memberName: member.name, loanId: loanRef.id, principal, termMonths, monthly, existing });
   return { ok: true, loanId: loanRef.id, outstanding, monthly, status };
 });
 
@@ -734,8 +809,17 @@ export const loansUpdate = onCall(async (req) => {
     tx.update(loanRef, patch);
     if (releaseOld) releaseBankTxn(tx, oldBank);
     reserve();
-    return { principal, outstanding, status: outstanding === 0 ? "repaid" : "active" };
+    return {
+      principal, outstanding, status: outstanding === 0 ? "repaid" : "active",
+      oldPrincipal, principalChanged: hasPrincipal && newPrincipal !== oldPrincipal,
+    };
   });
+  const name = await nameOf(memberId);
+  const summary = out.principalChanged
+    ? `${name} — اصل وام ${fa(out.oldPrincipal)}←${fa(out.principal)} اصلاح شد`
+    : `${name} — وام ویرایش شد`;
+  await writeAudit(req, "loan.update", summary,
+    { memberId, memberName: name, loanId, oldPrincipal: out.oldPrincipal, principal: out.principal });
   return { ok: true, loanId, ...out };
 });
 
@@ -766,6 +850,12 @@ export const loansDelete = onCall(async (req) => {
   });
   batch.update(memberRef, { loanReceived: false, ...rec(req) });
   await batch.commit();
+
+  const name = await nameOf(memberId);
+  const principal = Number(loanSnap.data()?.principal) || 0;
+  await writeAudit(req, "loan.delete",
+    `${name} — وام ${fa(principal)} حذف شد${insts.size ? ` (${fa(insts.size)} قسط)` : ""}`,
+    { memberId, memberName: name, loanId, principal, deletedInstallments: insts.size });
   return { ok: true, loanId, deletedInstallments: insts.size };
 });
 
@@ -797,6 +887,8 @@ export const loanOrderReorder = onCall(async (req) => {
     batch.update(db.collection(COL.members).doc(id), { loanPos: i + 1 });
   });
   await batch.commit();
+  await writeAudit(req, "loanorder.reorder", `ترتیب نوبت وام به‌روزرسانی شد (${fa((order as string[]).length)} عضو)`,
+    { count: (order as string[]).length });
   return { ok: true };
 });
 
@@ -805,8 +897,13 @@ export const loanOrderMarkReceived = onCall(async (req) => {
   const memberId = str(req.data?.memberId, "memberId");
   const received = !!req.data?.received;
   const ref = db.collection(COL.members).doc(memberId);
-  if (!(await ref.get()).exists) throw new HttpsError("not-found", "عضو یافت نشد.");
+  const mvSnap = await ref.get();
+  if (!mvSnap.exists) throw new HttpsError("not-found", "عضو یافت نشد.");
   await ref.update({ loanReceived: received, ...rec(req) }); // keeps position; only flags
+  const name = `${mvSnap.data()?.firstName ?? ""} ${mvSnap.data()?.lastName ?? ""}`.trim() || memberId;
+  await writeAudit(req, "loanorder.received",
+    received ? `${name} — وام در این دوره دریافت کرد` : `${name} — وضعیت «دریافت کرده» لغو شد`,
+    { memberId, memberName: name, received });
   return { ok: true };
 });
 
@@ -818,6 +915,8 @@ export const loanOrderStartNewRound = onCall(async (req) => {
   members.docs.forEach((d) => batch.update(d.ref, { loanReceived: false }));
   batch.set(rotRef, { ...rec(req) }, { merge: true }); // audit only — round counter removed
   await batch.commit();
+  await writeAudit(req, "loanorder.newround", `دور جدید وام‌دهی آغاز شد — وضعیت «دریافت کرده» ${fa(members.size)} عضو صفر شد`,
+    { count: members.size });
   return { ok: true };
 });
 
@@ -853,7 +952,15 @@ export const settingsUpdate = onCall(async (req) => {
     throw new HttpsError("invalid-argument", "هیچ تنظیمی برای به‌روزرسانی ارسال نشده است.");
   }
   // INVARIANT 6: changing fee/par NEVER recomputes a stored balance.
+  const oldCfg = await getConfig();
   await db.collection(COL.fund).doc(FUND_DOC.config).update({ ...patch, ...rec(req) });
+
+  const labels: Record<string, string> = {
+    membershipFee: "حق عضویت", defaultInstallments: "اقساط پیش‌فرض", loanPerShare: "سقف وام هر سهم",
+  };
+  const oldVals = oldCfg as unknown as Record<string, unknown>;
+  const parts = Object.keys(patch).map((k) => `${labels[k] ?? k}: ${fa(oldVals[k])}←${fa(patch[k])}`);
+  await writeAudit(req, "settings.update", `تنظیمات به‌روزرسانی شد — ${parts.join("، ")}`, { ...patch });
   return { ok: true, ...patch };
 });
 
@@ -865,6 +972,35 @@ export const dashboard = onCall(async (req) => {
   requireAdmin(req); // the manager's aggregate view — admin only ("hers alone")
   await advanceParIfNeeded(); // roll parValue forward for any elapsed Jalali months
   return buildDashboard();
+});
+
+// ============================================================
+//  ACTIVITY LOG  (append-only audit feed of every action)
+// ============================================================
+
+/** Paginated activity log, newest first. `before` (ms) is the cursor for
+ *  "load more"; pass back the previous page's `cursor`. Single orderBy + range
+ *  on the same field → no composite index needed. */
+export const activityList = onCall(async (req) => {
+  requireAdmin(req);
+  const limit = Math.min(Math.max(1, Math.floor(Number(req.data?.limit) || 50)), 200);
+  let q = db.collection(COL.audit).orderBy("recordedAt", "desc");
+  const before = Number(req.data?.before);
+  if (Number.isFinite(before) && before > 0) q = q.where("recordedAt", "<", Timestamp.fromMillis(before));
+  const snap = await q.limit(limit).get();
+  const entries = snap.docs.map((doc) => {
+    const x = doc.data();
+    return {
+      id: doc.id,
+      action: (x.action as string) ?? "",
+      summary: (x.summary as string) ?? "",
+      meta: (x.meta as Record<string, unknown>) ?? {},
+      recordedByName: (x.recordedByName as string | null) ?? null,
+      recordedAt: x.recordedAt instanceof Timestamp ? x.recordedAt.toMillis() : null,
+    };
+  });
+  const cursor = entries.length === limit ? entries[entries.length - 1].recordedAt : null;
+  return { entries, cursor };
 });
 
 // seed (admin-only) lives in its own module

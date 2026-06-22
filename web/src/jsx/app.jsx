@@ -75,6 +75,13 @@ function App() {
           }}>
             <Icon name="download" size={18} stroke={1.7} />
           </button>
+          <a href="activity.html" title="گزارش فعالیت‌ها" aria-label="گزارش فعالیت‌ها" style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40,
+            borderRadius: 10, border: '1px solid var(--hair)', background: 'var(--surface)', textDecoration: 'none',
+            color: 'var(--ink-2)', flex: 'none',
+          }}>
+            <Icon name="history" size={18} stroke={1.7} />
+          </a>
           <a href="settings.html" title="تنظیمات" aria-label="تنظیمات" style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40,
             borderRadius: 10, border: '1px solid var(--hair)', background: 'var(--surface)', textDecoration: 'none',

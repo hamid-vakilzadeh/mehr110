@@ -184,3 +184,39 @@
     derived: { topFamilyMax, top3Pct },
   };
 })();
+
+/* ---- demo activity feed (newest-first) for activity.html in DEMO mode ---- */
+(function () {
+  if (window.FB_LIVE || !window.FUND || !window.FUND.members) { window.DEMO_ACTIVITY = []; return; }
+  var ms = window.FUND.members;
+  var admin = 'حمیدرضا', bot = 'ربات تلگرام';
+  var faN = function (n) { return Number(n || 0).toLocaleString('fa-IR'); };
+  var HR = 3600000, E = [], t = Date.now() - HR;
+  var nm = function (i) { return ms[i % ms.length].name; };
+  var id = function (i) { return ms[i % ms.length].id; };
+  var add = function (gapH, by, action, summary, meta) {
+    t -= Math.round(gapH * HR);
+    E.push({ id: 'demo' + E.length, action: action, summary: summary, meta: meta || {}, recordedByName: by, recordedAt: t });
+  };
+  add(2, bot, 'payment.seed', nm(0) + ' — پس‌انداز ' + faN(500000) + ' ثبت شد (رسید ۱۰۴۲۹)', { memberId: id(0), memberName: nm(0), amount: 500000, receiptNo: '10429' });
+  add(5, admin, 'payment.installment', nm(1) + ' — قسط وام ' + faN(2000000) + ' ثبت شد (مانده ' + faN(8000000) + ')', { memberId: id(1), amount: 2000000 });
+  add(20, admin, 'loan.issue', nm(2) + ' — وام ' + faN(50000000) + ' (۲۴ ماه، قسط ' + faN(2083333) + ') صادر شد', { memberId: id(2), amount: 50000000 });
+  add(3, bot, 'payment.seed', nm(3) + ' — پس‌انداز ' + faN(500000) + ' ثبت شد (رسید ۱۰۴۲۸)', { memberId: id(3), amount: 500000 });
+  add(26, admin, 'payment.update', nm(1) + ' — مبلغ تراکنش ' + faN(1800000) + '←' + faN(2000000) + ' اصلاح شد (رسید ۱۰۴۲۰)', { memberId: id(1) });
+  add(10, admin, 'member.create', nm(4) + ' — عضو جدید (۲ سهم)', { memberName: nm(4), shares: 2 });
+  add(30, admin, 'payment.delete', nm(5) + ' — پس‌انداز ' + faN(500000) + ' حذف شد (رسید ۱۰۴۱۱)', { memberId: id(5), amount: 500000 });
+  add(8, admin, 'share.add', nm(6) + ' — ۱ سهم اضافه شد (کل: ۳)', { memberId: id(6) });
+  add(28, bot, 'payment.installment', nm(7) + ' — قسط وام ' + faN(1500000) + ' ثبت شد (مانده ' + faN(6000000) + ')', { memberId: id(7), amount: 1500000 });
+  add(34, admin, 'loanorder.received', nm(2) + ' — وام در این دوره دریافت کرد', { memberId: id(2) });
+  add(12, admin, 'settings.update', 'تنظیمات به‌روزرسانی شد — سقف وام هر سهم: ' + faN(60000000) + '←' + faN(80000000), {});
+  add(40, admin, 'member.update', nm(8) + ' — اطلاعات عضو ویرایش شد (سهم ۲←۳)', { memberId: id(8) });
+  add(16, admin, 'payment.seed', nm(9) + ' — پس‌انداز ' + faN(500000) + ' ثبت شد (رسید ۱۰۴۰۵)', { memberId: id(9), amount: 500000 });
+  add(44, admin, 'loan.delete', nm(10) + ' — وام ' + faN(12000000) + ' حذف شد (۳ قسط)', { memberId: id(10), amount: 12000000 });
+  add(20, bot, 'payment.seed', nm(11) + ' — پس‌انداز ' + faN(500000) + ' ثبت شد (رسید ۱۰۴۰۱)', { memberId: id(11), amount: 500000 });
+  add(50, admin, 'loanorder.reorder', 'ترتیب نوبت وام به‌روزرسانی شد (۳۰ عضو)', { count: 30 });
+  add(18, admin, 'payment.installment', nm(0) + ' — قسط وام ' + faN(2000000) + ' ثبت شد (مانده ' + faN(4000000) + ')', { memberId: id(0), amount: 2000000 });
+  add(60, admin, 'loanorder.newround', 'دور جدید وام‌دهی آغاز شد — وضعیت «دریافت کرده» ۲۹ عضو صفر شد', { count: 29 });
+  add(22, admin, 'member.delete', 'حسن صادقی — عضو حذف شد', { memberName: 'حسن صادقی' });
+  add(30, bot, 'payment.seed', nm(5) + ' — پس‌انداز ' + faN(700000) + ' ثبت شد (رسید ۱۰۳۹۰)', { memberId: id(5), amount: 700000 });
+  window.DEMO_ACTIVITY = E; // already newest-first (t decreases)
+})();
